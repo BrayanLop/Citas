@@ -1,12 +1,14 @@
 using Citas.DTOs;
 using Citas.Models;
 using Citas.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Citas.Controllers;
 
 [ApiController]
 [Route("[controller]")]
+[Authorize]
 public class CitasController : ControllerBase
 {
     private readonly IRepository<Cita> _citas;

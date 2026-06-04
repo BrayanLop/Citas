@@ -47,9 +47,16 @@ namespace Citas.Migrations
                     b.Property<int>("IdUsuario")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("IdHorario");
 
                     b.HasIndex("IdUsuario");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("AgendaEmpleados");
                 });
@@ -85,11 +92,18 @@ namespace Citas.Migrations
                     b.Property<string>("Observaciones")
                         .HasColumnType("text");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("IdCita");
 
                     b.HasIndex("IdCliente");
 
                     b.HasIndex("IdEmpleado");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Citas");
                 });
@@ -108,6 +122,11 @@ namespace Citas.Migrations
                     b.Property<int>("IdServicio")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<int>("TiempoEstimado")
                         .HasColumnType("integer");
 
@@ -121,7 +140,36 @@ namespace Citas.Migrations
 
                     b.HasIndex("IdServicio");
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("DetalleCitas");
+                });
+
+            modelBuilder.Entity("Citas.Models.Empresa", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Empresas");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "DEFAULT",
+                            Activo = true,
+                            Nombre = "Empresa por defecto"
+                        });
                 });
 
             modelBuilder.Entity("Citas.Models.Rol", b =>
@@ -137,7 +185,14 @@ namespace Citas.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Roles");
                 });
@@ -156,11 +211,18 @@ namespace Citas.Migrations
                     b.Property<int>("IdUsuario")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("IdRolUsuario");
 
                     b.HasIndex("IdRol");
 
                     b.HasIndex("IdUsuario");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("RolUsuarios");
                 });
@@ -178,6 +240,11 @@ namespace Citas.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<int>("TiempoEstimado")
                         .HasColumnType("integer");
 
@@ -186,6 +253,8 @@ namespace Citas.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("IdServicio");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Servicios");
                 });
@@ -203,7 +272,14 @@ namespace Citas.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Usuarios");
                 });

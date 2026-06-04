@@ -1,12 +1,14 @@
 using Citas.DTOs;
 using Citas.Models;
 using Citas.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Citas.Controllers;
 
 [ApiController]
 [Route("[controller]")]
+[Authorize]
 public class AgendaEmpleadoController : ControllerBase
 {
     private readonly IRepository<AgendaEmpleado> _agendas;

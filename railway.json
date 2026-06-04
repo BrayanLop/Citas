@@ -1,11 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "nixpacks",
-    "buildCommand": "bash start.sh"
+    "builder": "nixpacks"
   },
   "deploy": {
-    "startCommand": "bash start.sh",
+    "startCommand": "cd Citas && dotnet Citas.dll",
     "restartPolicyMaxRetries": 5
   }
 }

@@ -1,1 +1,1 @@
-web: bash start.sh
+web: cd Citas && dotnet Citas.dll

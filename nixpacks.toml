@@ -1,9 +1,5 @@
-[build]
-language = "dotnet"
-buildCommand = "cd Citas && dotnet restore && dotnet build -c Release"
+[phases.build]
+cmds = ["cd Citas && dotnet restore", "cd Citas && dotnet build -c Release"]
 
-[env]
-DOTNET_VERSION = "10.0"
-
-[start]
-runCommand = "cd Citas && dotnet Citas.dll"
+[phases.start]
+cmd = "cd Citas && dotnet Citas.dll"

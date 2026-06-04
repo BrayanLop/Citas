@@ -26,17 +26,14 @@ services:
       dockerfile: Citas/Dockerfile
     container_name: citas-api
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080;https://+:8443
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/https/aspnetapp.pfx
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=password123
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=citas;Username=postgres;Password=e2GLOUYELM5kveUf
       - Jwt__Issuer=CitasApi
       - Jwt__Audience=CitasApiClients
       - Jwt__Key=aC3xY9zK2mP5qL7wM0oR4sT6uV8xY9zK2mP5qL7wN0oR=
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
     ports:
       - "8080:8080"
-      - "8443:8443"
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,5 +1,0 @@
-[phases.build]
-cmds = ["cd Citas && dotnet restore", "cd Citas && dotnet build -c Release"]
-
-[phases.start]
-cmd = "cd Citas && dotnet Citas.dll"

@@ -1,11 +1,12 @@
-#!/bin/bash
+﻿#!/bin/bash
 set -e
 
-echo "🚀 Iniciando Citas API..."
-
-# Cambiar a la carpeta del proyecto
+echo "Building Citas API..."
 cd Citas
+dotnet restore
+dotnet build -c Release
+dotnet publish -c Release -o out
 
-# Ejecutar la aplicación compilada
-# Railway ya compiló el proyecto, solo ejecutamos
+echo "Starting Citas API..."
+cd out
 dotnet Citas.dll

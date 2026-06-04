@@ -1,0 +1,7 @@
+# .NET 10 - Railway Configuration
+# Detecta automáticamente .NET 10 y lo construye
+
+version: v1
+language: dotnet
+dotnetVersion: "10.0"
+startCommand: bash start.sh

@@ -1,8 +1,7 @@
-using Citas.Data;
 using Citas.DTOs;
 using Citas.Models;
+using Citas.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Controllers;
 
@@ -10,41 +9,43 @@ namespace Citas.Controllers;
 [Route("[controller]")]
 public class CitasController : ControllerBase
 {
-    private readonly CitasContext _context;
+    private readonly IRepository<Cita> _citas;
+    private readonly IRepository<Usuario> _usuarios;
 
-    public CitasController(CitasContext context)
+    public CitasController(IRepository<Cita> citas, IRepository<Usuario> usuarios)
     {
-        _context = context;
+        _citas = citas;
+        _usuarios = usuarios;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CitaResponseDto>>> GetCitas()
     {
-        var citas = await _context.Citas
-            .Include(c => c.Cliente)
-            .Include(c => c.Empleado)
-            .Include(c => c.DetalleCitas)
-            .Select(c => new CitaResponseDto
-            {
-                IdCita = c.IdCita,
-                IdCliente = c.IdCliente,
-                IdEmpleado = c.IdEmpleado,
-                Estado = c.Estado,
-                FechaCita = c.FechaCita,
-                HoraEstimadaCita = c.HoraEstimadaCita,
-                HoraEstimadaFin = c.HoraEstimadaFin,
-                Observaciones = c.Observaciones
-            })
-            .ToListAsync();
+        var citas = await _citas.GetAllAsync(
+            c => c.Cliente!,
+            c => c.Empleado!,
+            c => c.DetalleCitas);
 
-        return Ok(citas);
+        var response = citas.Select(c => new CitaResponseDto
+        {
+            IdCita = c.IdCita,
+            IdCliente = c.IdCliente,
+            IdEmpleado = c.IdEmpleado,
+            Estado = c.Estado,
+            FechaCita = c.FechaCita,
+            HoraEstimadaCita = c.HoraEstimadaCita,
+            HoraEstimadaFin = c.HoraEstimadaFin,
+            Observaciones = c.Observaciones
+        });
+
+        return Ok(response);
     }
 
     [HttpPost]
     public async Task<ActionResult<CitaResponseDto>> CreateCita([FromBody] CreateCitaDto dto)
     {
-        var clienteExists = await _context.Usuarios.AnyAsync(u => u.Id == dto.IdCliente);
-        var empleadoExists = await _context.Usuarios.AnyAsync(u => u.Id == dto.IdEmpleado);
+        var clienteExists = await _usuarios.ExistsAsync(u => u.Id == dto.IdCliente);
+        var empleadoExists = await _usuarios.ExistsAsync(u => u.Id == dto.IdEmpleado);
 
         if (!clienteExists || !empleadoExists)
             return BadRequest("Cliente o Empleado no encontrado");
@@ -58,8 +59,8 @@ public class CitasController : ControllerBase
             Estado = "Pendiente"
         };
 
-        _context.Citas.Add(cita);
-        await _context.SaveChangesAsync();
+        await _citas.AddAsync(cita);
+        await _citas.SaveChangesAsync();
 
         var response = new CitaResponseDto
         {
@@ -79,7 +80,7 @@ public class CitasController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCita(int id, [FromBody] UpdateCitaDto dto)
     {
-        var cita = await _context.Citas.FindAsync(id);
+        var cita = await _citas.GetByIdAsync(id);
         if (cita == null)
             return NotFound("Cita no encontrada");
 
@@ -90,8 +91,8 @@ public class CitasController : ControllerBase
         if (dto.HoraEstimadaFin.HasValue)
             cita.HoraEstimadaFin = dto.HoraEstimadaFin.Value;
 
-        _context.Citas.Update(cita);
-        await _context.SaveChangesAsync();
+        _citas.Update(cita);
+        await _citas.SaveChangesAsync();
 
         return NoContent();
     }
@@ -99,15 +100,15 @@ public class CitasController : ControllerBase
     [HttpPatch("{id}")]
     public async Task<IActionResult> PartialUpdateCita(int id, [FromBody] PartialUpdateCitaDto dto)
     {
-        var cita = await _context.Citas.FindAsync(id);
+        var cita = await _citas.GetByIdAsync(id);
         if (cita == null)
             return NotFound("Cita no encontrada");
 
         if (dto.Estado != null)
             cita.Estado = dto.Estado;
 
-        _context.Citas.Update(cita);
-        await _context.SaveChangesAsync();
+        _citas.Update(cita);
+        await _citas.SaveChangesAsync();
 
         return NoContent();
     }
@@ -115,12 +116,12 @@ public class CitasController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCita(int id)
     {
-        var cita = await _context.Citas.FindAsync(id);
+        var cita = await _citas.GetByIdAsync(id);
         if (cita == null)
             return NotFound("Cita no encontrada");
 
-        _context.Citas.Remove(cita);
-        await _context.SaveChangesAsync();
+        _citas.Remove(cita);
+        await _citas.SaveChangesAsync();
 
         return NoContent();
     }

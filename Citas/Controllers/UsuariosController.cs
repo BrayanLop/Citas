@@ -1,8 +1,7 @@
-using Citas.Data;
 using Citas.DTOs;
 using Citas.Models;
+using Citas.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Controllers;
 
@@ -10,25 +9,25 @@ namespace Citas.Controllers;
 [Route("[controller]")]
 public class UsuariosController : ControllerBase
 {
-    private readonly CitasContext _context;
+    private readonly IRepository<Usuario> _usuarios;
 
-    public UsuariosController(CitasContext context)
+    public UsuariosController(IRepository<Usuario> usuarios)
     {
-        _context = context;
+        _usuarios = usuarios;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UsuarioResponseDto>>> GetUsuarios()
     {
-        var usuarios = await _context.Usuarios
-            .Select(u => new UsuarioResponseDto
-            {
-                Id = u.Id,
-                NombreUsuario = u.NombreUsuario
-            })
-            .ToListAsync();
+        var usuarios = await _usuarios.GetAllAsync();
 
-        return Ok(usuarios);
+        var response = usuarios.Select(u => new UsuarioResponseDto
+        {
+            Id = u.Id,
+            NombreUsuario = u.NombreUsuario
+        });
+
+        return Ok(response);
     }
 
     [HttpPost]
@@ -39,8 +38,8 @@ public class UsuariosController : ControllerBase
             NombreUsuario = dto.NombreUsuario
         };
 
-        _context.Usuarios.Add(usuario);
-        await _context.SaveChangesAsync();
+        await _usuarios.AddAsync(usuario);
+        await _usuarios.SaveChangesAsync();
 
         var response = new UsuarioResponseDto
         {
@@ -54,12 +53,12 @@ public class UsuariosController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUsuario(int id)
     {
-        var usuario = await _context.Usuarios.FindAsync(id);
+        var usuario = await _usuarios.GetByIdAsync(id);
         if (usuario == null)
             return NotFound("Usuario no encontrado");
 
-        _context.Usuarios.Remove(usuario);
-        await _context.SaveChangesAsync();
+        _usuarios.Remove(usuario);
+        await _usuarios.SaveChangesAsync();
 
         return NoContent();
     }

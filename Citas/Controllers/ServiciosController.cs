@@ -1,8 +1,7 @@
-using Citas.Data;
 using Citas.DTOs;
 using Citas.Models;
+using Citas.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Controllers;
 
@@ -10,27 +9,27 @@ namespace Citas.Controllers;
 [Route("[controller]")]
 public class ServiciosController : ControllerBase
 {
-    private readonly CitasContext _context;
+    private readonly IRepository<Servicio> _servicios;
 
-    public ServiciosController(CitasContext context)
+    public ServiciosController(IRepository<Servicio> servicios)
     {
-        _context = context;
+        _servicios = servicios;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ServicioResponseDto>>> GetServicios()
     {
-        var servicios = await _context.Servicios
-            .Select(s => new ServicioResponseDto
-            {
-                IdServicio = s.IdServicio,
-                NombreServicio = s.NombreServicio,
-                Valor = s.Valor,
-                TiempoEstimado = s.TiempoEstimado
-            })
-            .ToListAsync();
+        var servicios = await _servicios.GetAllAsync();
 
-        return Ok(servicios);
+        var response = servicios.Select(s => new ServicioResponseDto
+        {
+            IdServicio = s.IdServicio,
+            NombreServicio = s.NombreServicio,
+            Valor = s.Valor,
+            TiempoEstimado = s.TiempoEstimado
+        });
+
+        return Ok(response);
     }
 
     [HttpPost]
@@ -43,8 +42,8 @@ public class ServiciosController : ControllerBase
             TiempoEstimado = dto.TiempoEstimado
         };
 
-        _context.Servicios.Add(servicio);
-        await _context.SaveChangesAsync();
+        await _servicios.AddAsync(servicio);
+        await _servicios.SaveChangesAsync();
 
         var response = new ServicioResponseDto
         {
@@ -60,7 +59,7 @@ public class ServiciosController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateServicio(int id, [FromBody] UpdateServicioDto dto)
     {
-        var servicio = await _context.Servicios.FindAsync(id);
+        var servicio = await _servicios.GetByIdAsync(id);
         if (servicio == null)
             return NotFound("Servicio no encontrado");
 
@@ -68,8 +67,8 @@ public class ServiciosController : ControllerBase
         servicio.Valor = dto.Valor;
         servicio.TiempoEstimado = dto.TiempoEstimado;
 
-        _context.Servicios.Update(servicio);
-        await _context.SaveChangesAsync();
+        _servicios.Update(servicio);
+        await _servicios.SaveChangesAsync();
 
         return NoContent();
     }
@@ -77,12 +76,12 @@ public class ServiciosController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteServicio(int id)
     {
-        var servicio = await _context.Servicios.FindAsync(id);
+        var servicio = await _servicios.GetByIdAsync(id);
         if (servicio == null)
             return NotFound("Servicio no encontrado");
 
-        _context.Servicios.Remove(servicio);
-        await _context.SaveChangesAsync();
+        _servicios.Remove(servicio);
+        await _servicios.SaveChangesAsync();
 
         return NoContent();
     }

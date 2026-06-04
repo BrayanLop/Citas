@@ -1,7 +1,7 @@
-using Citas.Data;
 using Citas.DTOs;
+using Citas.Models;
+using Citas.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Controllers;
 
@@ -9,25 +9,25 @@ namespace Citas.Controllers;
 [Route("[controller]")]
 public class AgendaEmpleadoController : ControllerBase
 {
-    private readonly CitasContext _context;
+    private readonly IRepository<AgendaEmpleado> _agendas;
 
-    public AgendaEmpleadoController(CitasContext context)
+    public AgendaEmpleadoController(IRepository<AgendaEmpleado> agendas)
     {
-        _context = context;
+        _agendas = agendas;
     }
 
     [HttpPatch("{id}")]
     public async Task<IActionResult> UpdateAgendaEmpleado(int id, [FromBody] UpdateAgendaEmpleadoDto dto)
     {
-        var agenda = await _context.AgendaEmpleados.FindAsync(id);
+        var agenda = await _agendas.GetByIdAsync(id);
         if (agenda == null)
             return NotFound("Horario no encontrado");
 
         if (dto.HoraEstimadaFin.HasValue)
             agenda.HoraEstimadaFin = dto.HoraEstimadaFin.Value;
 
-        _context.AgendaEmpleados.Update(agenda);
-        await _context.SaveChangesAsync();
+        _agendas.Update(agenda);
+        await _agendas.SaveChangesAsync();
 
         return NoContent();
     }

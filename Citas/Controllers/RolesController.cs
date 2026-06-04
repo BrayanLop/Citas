@@ -1,7 +1,7 @@
-using Citas.Data;
 using Citas.DTOs;
+using Citas.Models;
+using Citas.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Controllers;
 
@@ -9,24 +9,24 @@ namespace Citas.Controllers;
 [Route("[controller]")]
 public class RolesController : ControllerBase
 {
-    private readonly CitasContext _context;
+    private readonly IRepository<Rol> _roles;
 
-    public RolesController(CitasContext context)
+    public RolesController(IRepository<Rol> roles)
     {
-        _context = context;
+        _roles = roles;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<RolResponseDto>>> GetRoles()
     {
-        var roles = await _context.Roles
-            .Select(r => new RolResponseDto
-            {
-                Id = r.Id,
-                NombreRol = r.NombreRol
-            })
-            .ToListAsync();
+        var roles = await _roles.GetAllAsync();
 
-        return Ok(roles);
+        var response = roles.Select(r => new RolResponseDto
+        {
+            Id = r.Id,
+            NombreRol = r.NombreRol
+        });
+
+        return Ok(response);
     }
 }

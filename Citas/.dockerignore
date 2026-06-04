@@ -1,0 +1,33 @@
+# Docker
+bin/
+obj/
+*.dll
+*.pdb
+.dockerignore
+
+# Git
+.git
+.gitignore
+
+# User-specific
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Dependencies
+node_modules/
+packages/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Environment files
+.env
+.env.local

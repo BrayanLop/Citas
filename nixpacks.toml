@@ -1,7 +1,6 @@
-# .NET 10 - Railway Configuration
-# Detecta automáticamente .NET 10 y lo construye
+[build]
+language = "dotnet"
+dotnetVersion = "10.0"
 
-version: v1
-language: dotnet
-dotnetVersion: "10.0"
-startCommand: bash start.sh
+[deploy]
+startCommand = "cd Citas && dotnet Citas.dll"

@@ -172,6 +172,54 @@ namespace Citas.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Citas.Models.Persona", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Apellido")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("apellido");
+
+                    b.Property<string>("Cedula")
+                        .HasColumnType("text")
+                        .HasColumnName("cedula");
+
+                    b.Property<string>("Celular")
+                        .HasColumnType("text")
+                        .HasColumnName("celular");
+
+                    b.Property<int?>("Edad")
+                        .HasColumnType("integer")
+                        .HasColumnName("edad");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime?>("FechaNacimiento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fechanacimiento");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("Residencia")
+                        .HasColumnType("text")
+                        .HasColumnName("residencia");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("personas", (string)null);
+                });
+
             modelBuilder.Entity("Citas.Models.Rol", b =>
                 {
                     b.Property<int>("Id")
@@ -267,10 +315,21 @@ namespace Citas.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ClaveHash")
+                        .HasColumnType("text");
+
+                    b.Property<bool?>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("NombreUsuario")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("PersonaId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -278,6 +337,8 @@ namespace Citas.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PersonaId");
 
                     b.HasIndex("TenantId");
 
@@ -352,9 +413,23 @@ namespace Citas.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Citas.Models.Usuario", b =>
+                {
+                    b.HasOne("Citas.Models.Persona", "Persona")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("PersonaId");
+
+                    b.Navigation("Persona");
+                });
+
             modelBuilder.Entity("Citas.Models.Cita", b =>
                 {
                     b.Navigation("DetalleCitas");
+                });
+
+            modelBuilder.Entity("Citas.Models.Persona", b =>
+                {
+                    b.Navigation("Usuarios");
                 });
 
             modelBuilder.Entity("Citas.Models.Rol", b =>

@@ -19,6 +19,7 @@ public class CitasContext : DbContext
     public string? CurrentTenantId => _tenantId;
 
     public DbSet<Empresa> Empresas { get; set; }
+    public DbSet<Persona> Personas { get; set; }
     public DbSet<Rol> Roles { get; set; }
     public DbSet<Usuario> Usuarios { get; set; }
     public DbSet<RolUsuario> RolUsuarios { get; set; }
@@ -52,6 +53,26 @@ public class CitasContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.NombreUsuario).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Estado).HasDefaultValue(true);
+            entity.HasOne(e => e.Persona)
+                .WithMany(p => p.Usuarios)
+                .HasForeignKey(e => e.PersonaId);
+        });
+
+        // Persona (tabla creada manualmente con nombres en minuscula; no es tenant).
+        modelBuilder.Entity<Persona>(entity =>
+        {
+            entity.ToTable("personas");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired();
+            entity.Property(e => e.Apellido).HasColumnName("apellido").IsRequired();
+            entity.Property(e => e.Cedula).HasColumnName("cedula");
+            entity.Property(e => e.Residencia).HasColumnName("residencia");
+            entity.Property(e => e.Email).HasColumnName("email");
+            entity.Property(e => e.Edad).HasColumnName("edad");
+            entity.Property(e => e.Celular).HasColumnName("celular");
+            entity.Property(e => e.FechaNacimiento).HasColumnName("fechanacimiento");
         });
 
         // RolUsuario

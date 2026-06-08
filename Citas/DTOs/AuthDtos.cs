@@ -45,6 +45,15 @@ public class SelectEmpresaDto
     public string Tenant { get; set; } = string.Empty;
 }
 
+/// <summary>Puente para que un empleado de Natural entre a Citas en una empresa/tenant.</summary>
+public class EmpleadoTokenRequestDto
+{
+    public string Tenant { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    /// <summary>JWT de Natural (se valida si hay clave compartida configurada).</summary>
+    public string? NaturalToken { get; set; }
+}
+
 /// <summary>Token con tenant tras elegir empresa; incluye el userId del cliente en ese tenant.</summary>
 public class SelectEmpresaResponseDto
 {

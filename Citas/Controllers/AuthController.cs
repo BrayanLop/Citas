@@ -152,7 +152,81 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Puente Natural -> Citas: un empleado autenticado en Natural entra a una empresa/tenant.
+    /// Si hay clave compartida (NaturalJwt:Key) se valida el token de Natural. Asegura el
+    /// Usuario(empleado) en el tenant y emite un token de Citas en modo empresa.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("token-empleado")]
+    public async Task<ActionResult<SelectEmpresaResponseDto>> TokenEmpleado([FromBody] EmpleadoTokenRequestDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Tenant) || string.IsNullOrWhiteSpace(dto.Nombre))
+            return BadRequest("Tenant y nombre son obligatorios");
+
+        var naturalKey = _config["NaturalJwt:Key"];
+        if (!string.IsNullOrWhiteSpace(naturalKey) && !TokenNaturalValido(dto.NaturalToken, naturalKey))
+            return Unauthorized("Token de Natural invalido o ausente");
+
+        var tenant = dto.Tenant.Trim();
+        var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == tenant);
+        if (empresa == null || !empresa.Activo)
+            return BadRequest("Empresa no existe o esta inactiva");
+
+        var nombre = dto.Nombre.Trim();
+        var usuario = await _db.Usuarios.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.TenantId == tenant && u.NombreUsuario.ToLower() == nombre.ToLower());
+
+        if (usuario == null)
+        {
+            usuario = new Usuario { NombreUsuario = nombre, TenantId = tenant, Estado = true };
+            _db.Usuarios.Add(usuario);
+            await _db.SaveChangesAsync();
+            await AsignarRolAsync(usuario.Id, tenant, "Empleado");
+        }
+
+        var (token, expira) = GenerarJwt(new[]
+        {
+            new Claim(TenantClaimTypes.Tenant, tenant),
+            new Claim("userId", usuario.Id.ToString()),
+            new Claim(ClaimTypes.Name, nombre),
+            new Claim("mode", "empresa"),
+        });
+
+        return Ok(new SelectEmpresaResponseDto
+        {
+            Token = token,
+            Tenant = tenant,
+            EmpresaNombre = empresa.Nombre,
+            UserId = usuario.Id,
+            ExpiraUtc = expira,
+        });
+    }
+
     // ===== Helpers =====
+
+    /// <summary>Valida la firma y vigencia de un token de Natural con la clave compartida.</summary>
+    private static bool TokenNaturalValido(string? token, string key)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return false;
+        try
+        {
+            new JwtSecurityTokenHandler().ValidateToken(token, new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromMinutes(2),
+            }, out _);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private ClienteAuthResponseDto BuildClienteAuth(Persona persona)
     {

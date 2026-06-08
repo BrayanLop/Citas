@@ -17,5 +17,8 @@ public class Persona
     public string? Celular { get; set; }
     public DateTime? FechaNacimiento { get; set; }
 
+    /// <summary>Hash de la contrasena para el login global del cliente (PBKDF2).</summary>
+    public string? ClaveHash { get; set; }
+
     public ICollection<Usuario> Usuarios { get; set; } = [];
 }

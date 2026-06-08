@@ -73,6 +73,8 @@ public class CitasContext : DbContext
             entity.Property(e => e.Edad).HasColumnName("edad");
             entity.Property(e => e.Celular).HasColumnName("celular");
             entity.Property(e => e.FechaNacimiento).HasColumnName("fechanacimiento");
+            // Columna agregada para el login global del cliente (case-sensitive).
+            entity.Property(e => e.ClaveHash).HasColumnName("ClaveHash");
         });
 
         // RolUsuario

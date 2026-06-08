@@ -6,6 +6,7 @@ public class CreateCitaDto
     public int IdEmpleado { get; set; }
     public DateTime FechaCita { get; set; }
     public TimeSpan HoraEstimadaCita { get; set; }
+    public string? Observaciones { get; set; }
 }
 
 public class UpdateCitaDto
@@ -30,4 +31,6 @@ public class CitaResponseDto
     public TimeSpan HoraEstimadaCita { get; set; }
     public TimeSpan? HoraEstimadaFin { get; set; }
     public string? Observaciones { get; set; }
+    public string? NombreCliente { get; set; }
+    public string? NombreEmpleado { get; set; }
 }

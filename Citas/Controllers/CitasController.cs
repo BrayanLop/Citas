@@ -1,8 +1,10 @@
+using Citas.Data;
 using Citas.DTOs;
 using Citas.Models;
 using Citas.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Controllers;
 
@@ -13,33 +15,40 @@ public class CitasController : ControllerBase
 {
     private readonly IRepository<Cita> _citas;
     private readonly IRepository<Usuario> _usuarios;
+    private readonly CitasContext _db;
 
-    public CitasController(IRepository<Cita> citas, IRepository<Usuario> usuarios)
+    public CitasController(IRepository<Cita> citas, IRepository<Usuario> usuarios, CitasContext db)
     {
         _citas = citas;
         _usuarios = usuarios;
+        _db = db;
     }
 
+    /// <summary>
+    /// Lista las citas del tenant. Filtra opcionalmente por cliente o empleado
+    /// (?clienteId= para "mis citas", ?empleadoId= para "mi agenda").
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CitaResponseDto>>> GetCitas()
+    public async Task<ActionResult<IEnumerable<CitaResponseDto>>> GetCitas(
+        [FromQuery] int? clienteId = null,
+        [FromQuery] int? empleadoId = null)
     {
-        var citas = await _citas.GetAllAsync(
-            c => c.Cliente!,
-            c => c.Empleado!,
-            c => c.DetalleCitas);
+        var query = _db.Citas
+            .Include(c => c.Cliente)
+            .Include(c => c.Empleado)
+            .AsQueryable();
 
-        var response = citas.Select(c => new CitaResponseDto
-        {
-            IdCita = c.IdCita,
-            IdCliente = c.IdCliente,
-            IdEmpleado = c.IdEmpleado,
-            Estado = c.Estado,
-            FechaCita = c.FechaCita,
-            HoraEstimadaCita = c.HoraEstimadaCita,
-            HoraEstimadaFin = c.HoraEstimadaFin,
-            Observaciones = c.Observaciones
-        });
+        if (clienteId.HasValue)
+            query = query.Where(c => c.IdCliente == clienteId.Value);
+        if (empleadoId.HasValue)
+            query = query.Where(c => c.IdEmpleado == empleadoId.Value);
 
+        var citas = await query
+            .OrderByDescending(c => c.FechaCita)
+            .ThenByDescending(c => c.HoraEstimadaCita)
+            .ToListAsync();
+
+        var response = citas.Select(MapToDto);
         return Ok(response);
     }
 
@@ -58,25 +67,14 @@ public class CitasController : ControllerBase
             IdEmpleado = dto.IdEmpleado,
             FechaCita = dto.FechaCita,
             HoraEstimadaCita = dto.HoraEstimadaCita,
+            Observaciones = dto.Observaciones,
             Estado = "Pendiente"
         };
 
         await _citas.AddAsync(cita);
         await _citas.SaveChangesAsync();
 
-        var response = new CitaResponseDto
-        {
-            IdCita = cita.IdCita,
-            IdCliente = cita.IdCliente,
-            IdEmpleado = cita.IdEmpleado,
-            Estado = cita.Estado,
-            FechaCita = cita.FechaCita,
-            HoraEstimadaCita = cita.HoraEstimadaCita,
-            HoraEstimadaFin = cita.HoraEstimadaFin,
-            Observaciones = cita.Observaciones
-        };
-
-        return CreatedAtAction(nameof(GetCitas), new { id = cita.IdCita }, response);
+        return CreatedAtAction(nameof(GetCitas), new { id = cita.IdCita }, MapToDto(cita));
     }
 
     [HttpPut("{id}")]
@@ -127,4 +125,18 @@ public class CitasController : ControllerBase
 
         return NoContent();
     }
+
+    private static CitaResponseDto MapToDto(Cita c) => new()
+    {
+        IdCita = c.IdCita,
+        IdCliente = c.IdCliente,
+        IdEmpleado = c.IdEmpleado,
+        Estado = c.Estado,
+        FechaCita = c.FechaCita,
+        HoraEstimadaCita = c.HoraEstimadaCita,
+        HoraEstimadaFin = c.HoraEstimadaFin,
+        Observaciones = c.Observaciones,
+        NombreCliente = c.Cliente?.NombreUsuario,
+        NombreEmpleado = c.Empleado?.NombreUsuario,
+    };
 }

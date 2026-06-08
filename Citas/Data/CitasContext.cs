@@ -59,10 +59,11 @@ public class CitasContext : DbContext
                 .HasForeignKey(e => e.PersonaId);
         });
 
-        // Persona (tabla creada manualmente con nombres en minuscula; no es tenant).
+        // Persona: tabla "Personas" (P mayuscula, case-sensitive) con columnas en
+        // minuscula (id, nombre, ...); por eso se mapea de forma explicita. No es tenant.
         modelBuilder.Entity<Persona>(entity =>
         {
-            entity.ToTable("personas");
+            entity.ToTable("Personas");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired();

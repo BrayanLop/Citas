@@ -38,7 +38,7 @@ public class CitasContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasMaxLength(50);
             entity.Property(e => e.Nombre).IsRequired().HasMaxLength(150);
-            entity.HasData(new Empresa { Id = "DEFAULT", Nombre = "Empresa por defecto", Activo = true });
+            entity.HasData(Empresa.Crear("DEFAULT", "Empresa por defecto"));
         });
 
         // Rol

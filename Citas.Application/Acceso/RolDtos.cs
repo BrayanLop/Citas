@@ -1,4 +1,4 @@
-namespace Citas.DTOs;
+namespace Citas.Application.Acceso;
 
 public class RolResponseDto
 {

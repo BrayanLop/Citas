@@ -1,8 +1,8 @@
-namespace Citas.DTOs;
+namespace Citas.Application.Acceso;
 
 public class TokenRequestDto
 {
-    /// <summary>Codigo de la empresa/tenant para la que se emite el token.</summary>
+    /// <summary>Código de la empresa/tenant para la que se emite el token.</summary>
     public string Tenant { get; set; } = string.Empty;
     /// <summary>Nombre de usuario (informativo para el token).</summary>
     public string Usuario { get; set; } = string.Empty;

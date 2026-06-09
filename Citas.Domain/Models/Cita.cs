@@ -11,7 +11,6 @@ namespace Citas.Models;
 /// </summary>
 public class Cita : ITenantEntity
 {
-    // Constructor sin parámetros para EF Core (materialización desde la BD).
     private Cita() { }
 
     public int IdCita { get; private set; }
@@ -23,7 +22,6 @@ public class Cita : ITenantEntity
     public TimeSpan? HoraEstimadaFin { get; private set; }
     public string? Observaciones { get; private set; }
 
-    // Público por requisito de ITenantEntity; el TenantId lo sella la infraestructura.
     public string TenantId { get; set; } = string.Empty;
 
     public Usuario? Cliente { get; private set; }
@@ -65,7 +63,9 @@ public class Cita : ITenantEntity
     public void Atender() => CambiarEstadoA(EstadoCita.Atendida);
     public void Cancelar() => CambiarEstadoA(EstadoCita.Cancelada);
 
-    /// <summary>Cambia el estado validando que la transición sea permitida.</summary>
+    /// <summary>
+    /// Cambia el estado validando que la transición sea permitida.
+    /// </summary>
     public void CambiarEstadoA(string nuevoEstado)
     {
         if (!EstadoCita.EsValido(nuevoEstado))
@@ -78,7 +78,9 @@ public class Cita : ITenantEntity
         Estado = nuevoEstado;
     }
 
-    /// <summary>Reprograma la cita; no se permite si ya fue atendida o cancelada.</summary>
+    /// <summary>
+    /// Reprograma la cita; no se permite si ya fue atendida o cancelada.
+    /// </summary>
     public void Reprogramar(DateTime fechaCita, TimeSpan horaInicio, TimeSpan? horaFin)
     {
         if (Estado is EstadoCita.Atendida or EstadoCita.Cancelada)

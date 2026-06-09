@@ -1,4 +1,4 @@
-namespace Citas.DTOs;
+namespace Citas.Application.Servicios;
 
 public class CreateServicioDto
 {

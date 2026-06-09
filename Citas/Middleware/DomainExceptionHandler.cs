@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Citas.Middleware;
 
 /// <summary>
-/// Traduce las <see cref="DomainException"/> (invariantes de negocio violadas) a
-/// respuestas HTTP 400 con ProblemDetails, para que los controladores no tengan
-/// que envolver cada llamada en try/catch.
+/// Traduce las <see cref="AppException"/> (reglas de negocio, conflictos, no
+/// autorizado…) a respuestas HTTP con ProblemDetails según el código que declara
+/// cada excepción, para que los controladores no envuelvan cada llamada en try/catch.
 /// </summary>
 public class DomainExceptionHandler : IExceptionHandler
 {
@@ -16,17 +16,17 @@ public class DomainExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is not DomainException domainException)
+        if (exception is not AppException appException)
             return false;
 
         var problem = new ProblemDetails
         {
-            Status = StatusCodes.Status400BadRequest,
-            Title = "Regla de negocio no cumplida",
-            Detail = domainException.Message,
+            Status = appException.StatusCode,
+            Title = appException.Title,
+            Detail = appException.Message,
         };
 
-        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        httpContext.Response.StatusCode = appException.StatusCode;
         await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
         return true;
     }

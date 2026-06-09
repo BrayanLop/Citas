@@ -1,4 +1,4 @@
-namespace Citas.DTOs;
+namespace Citas.Application.Agendamiento;
 
 public class UpdateAgendaEmpleadoDto
 {

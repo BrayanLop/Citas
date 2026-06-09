@@ -1,10 +1,18 @@
+using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Common;
+using Citas.Application.Diagnostico;
 using Citas.Data;
+using Citas.Domain.Acceso;
 using Citas.Domain.Agendamiento;
+using Citas.Domain.Empresas;
+using Citas.Domain.Servicios;
+using Citas.Infrastructure.Acceso;
 using Citas.Infrastructure.Agendamiento;
 using Citas.Infrastructure.Common;
+using Citas.Infrastructure.Diagnostico;
+using Citas.Infrastructure.Empresas;
+using Citas.Infrastructure.Servicios;
 using Citas.Multitenancy;
-using Citas.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,12 +30,22 @@ public static class DependencyInjection
         services.AddDbContext<CitasContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
-        // Repositorio genérico (estilo previo a DDD) para los controladores aún no migrados.
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
-        // Agregado Cita (DDD): repositorio dedicado + unidad de trabajo.
+        // Repositorios por agregado (DDD) + unidad de trabajo.
         services.AddScoped<ICitaRepository, CitaRepository>();
+        services.AddScoped<IAgendaEmpleadoRepository, AgendaEmpleadoRepository>();
+        services.AddScoped<IEmpresaRepository, EmpresaRepository>();
+        services.AddScoped<IServicioRepository, ServicioRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IRolRepository, RolRepository>();
+        services.AddScoped<IPersonaRepository, PersonaRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Servicios de identidad (puertos de Acceso).
+        services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();
+
+        // Diagnóstico (health check).
+        services.AddScoped<IHealthAppService, HealthAppService>();
 
         // Multitenancy: el tenant se resuelve desde el claim 'tenant' del JWT.
         services.AddHttpContextAccessor();

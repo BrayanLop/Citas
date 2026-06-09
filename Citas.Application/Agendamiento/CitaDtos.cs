@@ -1,4 +1,4 @@
-namespace Citas.DTOs;
+namespace Citas.Application.Agendamiento;
 
 public class CreateCitaDto
 {
@@ -6,6 +6,7 @@ public class CreateCitaDto
     public int IdEmpleado { get; set; }
     public DateTime FechaCita { get; set; }
     public TimeSpan HoraEstimadaCita { get; set; }
+    public TimeSpan? HoraEstimadaFin { get; set; }
     public string? Observaciones { get; set; }
 }
 

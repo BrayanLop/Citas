@@ -10,13 +10,16 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <!-- EF Core se mantiene porque algunos controladores aún consultan el DbContext
+         directamente (estilo previo a DDD). El proveedor (Npgsql) y las Tools viven
+         ahora en Citas.Infrastructure. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.14.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Citas.Application\Citas.Application.csproj" />
+    <ProjectReference Include="..\Citas.Infrastructure\Citas.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,8 @@
 using System.Text;
-using Citas.Data;
-using Citas.Multitenancy;
-using Citas.Repositories;
+using Citas.Application;
+using Citas.Infrastructure;
+using Citas.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
@@ -14,16 +13,9 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer<Citas.OpenApi.BearerSecuritySchemeTransformer>());
 
-// Add Entity Framework Core with PostgreSQL
-builder.Services.AddDbContext<CitasContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Capa de abstracción de acceso a datos (patrón Repository genérico)
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
-// Multitenancy: el tenant se resuelve desde el claim 'tenant' del JWT.
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITenantProvider, JwtTenantProvider>();
+// Capas de la arquitectura (DDD): aplicación e infraestructura.
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Autenticación JWT
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -44,9 +36,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// Traduce las DomainException a respuestas HTTP 400.
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

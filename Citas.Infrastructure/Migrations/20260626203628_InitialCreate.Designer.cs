@@ -9,11 +9,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Citas.Migrations
+namespace Citas.Infrastructure.Migrations
 {
     [DbContext(typeof(CitasContext))]
-    [Migration("20260605171640_SyncUsuariosYPersonas")]
-    partial class SyncUsuariosYPersonas
+    [Migration("20260626203628_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace Citas.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Citas.Models.AgendaEmpleado", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.AgendaEmpleadoDbModel", b =>
                 {
                     b.Property<int>("IdHorario")
                         .ValueGeneratedOnAdd()
@@ -64,7 +64,7 @@ namespace Citas.Migrations
                     b.ToTable("AgendaEmpleados");
                 });
 
-            modelBuilder.Entity("Citas.Models.Cita", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", b =>
                 {
                     b.Property<int>("IdCita")
                         .ValueGeneratedOnAdd()
@@ -111,7 +111,7 @@ namespace Citas.Migrations
                     b.ToTable("Citas");
                 });
 
-            modelBuilder.Entity("Citas.Models.DetalleCita", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.DetalleCitaDbModel", b =>
                 {
                     b.Property<int>("IdDetalle")
                         .ValueGeneratedOnAdd()
@@ -148,7 +148,7 @@ namespace Citas.Migrations
                     b.ToTable("DetalleCitas");
                 });
 
-            modelBuilder.Entity("Citas.Models.Empresa", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.EmpresaDbModel", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(50)
@@ -175,7 +175,7 @@ namespace Citas.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Citas.Models.Persona", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.PersonaDbModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -196,6 +196,10 @@ namespace Citas.Migrations
                     b.Property<string>("Celular")
                         .HasColumnType("text")
                         .HasColumnName("celular");
+
+                    b.Property<string>("ClaveHash")
+                        .HasColumnType("text")
+                        .HasColumnName("ClaveHash");
 
                     b.Property<int?>("Edad")
                         .HasColumnType("integer")
@@ -220,10 +224,10 @@ namespace Citas.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("personas", (string)null);
+                    b.ToTable("Personas");
                 });
 
-            modelBuilder.Entity("Citas.Models.Rol", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.RolDbModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -248,7 +252,7 @@ namespace Citas.Migrations
                     b.ToTable("Roles");
                 });
 
-            modelBuilder.Entity("Citas.Models.RolUsuario", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.RolUsuarioDbModel", b =>
                 {
                     b.Property<int>("IdRolUsuario")
                         .ValueGeneratedOnAdd()
@@ -278,7 +282,7 @@ namespace Citas.Migrations
                     b.ToTable("RolUsuarios");
                 });
 
-            modelBuilder.Entity("Citas.Models.Servicio", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.ServicioDbModel", b =>
                 {
                     b.Property<int>("IdServicio")
                         .ValueGeneratedOnAdd()
@@ -310,7 +314,7 @@ namespace Citas.Migrations
                     b.ToTable("Servicios");
                 });
 
-            modelBuilder.Entity("Citas.Models.Usuario", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -348,9 +352,9 @@ namespace Citas.Migrations
                     b.ToTable("Usuarios");
                 });
 
-            modelBuilder.Entity("Citas.Models.AgendaEmpleado", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.AgendaEmpleadoDbModel", b =>
                 {
-                    b.HasOne("Citas.Models.Usuario", "Usuario")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Usuario")
                         .WithMany("AgendaEmpleado")
                         .HasForeignKey("IdUsuario")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -359,15 +363,15 @@ namespace Citas.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("Citas.Models.Cita", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", b =>
                 {
-                    b.HasOne("Citas.Models.Usuario", "Cliente")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Cliente")
                         .WithMany("CitasCliente")
                         .HasForeignKey("IdCliente")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Citas.Models.Usuario", "Empleado")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Empleado")
                         .WithMany("CitasEmpleado")
                         .HasForeignKey("IdEmpleado")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -378,15 +382,15 @@ namespace Citas.Migrations
                     b.Navigation("Empleado");
                 });
 
-            modelBuilder.Entity("Citas.Models.DetalleCita", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.DetalleCitaDbModel", b =>
                 {
-                    b.HasOne("Citas.Models.Cita", "Cita")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", "Cita")
                         .WithMany("DetalleCitas")
                         .HasForeignKey("IdCita")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Citas.Models.Servicio", "Servicio")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.ServicioDbModel", "Servicio")
                         .WithMany("DetalleCitas")
                         .HasForeignKey("IdServicio")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -397,15 +401,15 @@ namespace Citas.Migrations
                     b.Navigation("Servicio");
                 });
 
-            modelBuilder.Entity("Citas.Models.RolUsuario", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.RolUsuarioDbModel", b =>
                 {
-                    b.HasOne("Citas.Models.Rol", "Rol")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.RolDbModel", "Rol")
                         .WithMany("RolUsuarios")
                         .HasForeignKey("IdRol")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Citas.Models.Usuario", "Usuario")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Usuario")
                         .WithMany("RolUsuarios")
                         .HasForeignKey("IdUsuario")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -416,36 +420,36 @@ namespace Citas.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("Citas.Models.Usuario", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", b =>
                 {
-                    b.HasOne("Citas.Models.Persona", "Persona")
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.PersonaDbModel", "Persona")
                         .WithMany("Usuarios")
                         .HasForeignKey("PersonaId");
 
                     b.Navigation("Persona");
                 });
 
-            modelBuilder.Entity("Citas.Models.Cita", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", b =>
                 {
                     b.Navigation("DetalleCitas");
                 });
 
-            modelBuilder.Entity("Citas.Models.Persona", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.PersonaDbModel", b =>
                 {
                     b.Navigation("Usuarios");
                 });
 
-            modelBuilder.Entity("Citas.Models.Rol", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.RolDbModel", b =>
                 {
                     b.Navigation("RolUsuarios");
                 });
 
-            modelBuilder.Entity("Citas.Models.Servicio", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.ServicioDbModel", b =>
                 {
                     b.Navigation("DetalleCitas");
                 });
 
-            modelBuilder.Entity("Citas.Models.Usuario", b =>
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", b =>
                 {
                     b.Navigation("AgendaEmpleado");
 

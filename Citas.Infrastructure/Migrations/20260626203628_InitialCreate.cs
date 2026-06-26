@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Citas.Migrations
+namespace Citas.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -13,12 +13,47 @@ namespace Citas.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "Empresas",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Nombre = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Activo = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Empresas", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Personas",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    nombre = table.Column<string>(type: "text", nullable: false),
+                    apellido = table.Column<string>(type: "text", nullable: false),
+                    cedula = table.Column<string>(type: "text", nullable: true),
+                    residencia = table.Column<string>(type: "text", nullable: true),
+                    email = table.Column<string>(type: "text", nullable: true),
+                    edad = table.Column<int>(type: "integer", nullable: true),
+                    celular = table.Column<string>(type: "text", nullable: true),
+                    fechanacimiento = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ClaveHash = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Personas", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Roles",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    NombreRol = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                    NombreRol = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -33,7 +68,8 @@ namespace Citas.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     NombreServicio = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     Valor = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    TiempoEstimado = table.Column<int>(type: "integer", nullable: false)
+                    TiempoEstimado = table.Column<int>(type: "integer", nullable: false),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -46,11 +82,20 @@ namespace Citas.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    NombreUsuario = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
+                    NombreUsuario = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    ClaveHash = table.Column<string>(type: "text", nullable: true),
+                    Estado = table.Column<bool>(type: "boolean", nullable: true, defaultValue: true),
+                    PersonaId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Usuarios", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Usuarios_Personas_PersonaId",
+                        column: x => x.PersonaId,
+                        principalTable: "Personas",
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -63,7 +108,8 @@ namespace Citas.Migrations
                     FechaReservada = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     HoraEstimadaCita = table.Column<TimeSpan>(type: "interval", nullable: false),
                     HoraEstimadaFin = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    EstadoHorario = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
+                    EstadoHorario = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -88,7 +134,8 @@ namespace Citas.Migrations
                     FechaCita = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     HoraEstimadaCita = table.Column<TimeSpan>(type: "interval", nullable: false),
                     HoraEstimadaFin = table.Column<TimeSpan>(type: "interval", nullable: true),
-                    Observaciones = table.Column<string>(type: "text", nullable: true)
+                    Observaciones = table.Column<string>(type: "text", nullable: true),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -114,7 +161,8 @@ namespace Citas.Migrations
                     IdRolUsuario = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     IdUsuario = table.Column<int>(type: "integer", nullable: false),
-                    IdRol = table.Column<int>(type: "integer", nullable: false)
+                    IdRol = table.Column<int>(type: "integer", nullable: false),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -142,7 +190,8 @@ namespace Citas.Migrations
                     IdCita = table.Column<int>(type: "integer", nullable: false),
                     IdServicio = table.Column<int>(type: "integer", nullable: false),
                     ValorServicio = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    TiempoEstimado = table.Column<int>(type: "integer", nullable: false)
+                    TiempoEstimado = table.Column<int>(type: "integer", nullable: false),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -161,10 +210,20 @@ namespace Citas.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
+            migrationBuilder.InsertData(
+                table: "Empresas",
+                columns: new[] { "Id", "Activo", "Nombre" },
+                values: new object[] { "DEFAULT", true, "Empresa por defecto" });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AgendaEmpleados_IdUsuario",
                 table: "AgendaEmpleados",
                 column: "IdUsuario");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AgendaEmpleados_TenantId",
+                table: "AgendaEmpleados",
+                column: "TenantId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Citas_IdCliente",
@@ -177,6 +236,11 @@ namespace Citas.Migrations
                 column: "IdEmpleado");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Citas_TenantId",
+                table: "Citas",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_DetalleCitas_IdCita",
                 table: "DetalleCitas",
                 column: "IdCita");
@@ -187,6 +251,16 @@ namespace Citas.Migrations
                 column: "IdServicio");
 
             migrationBuilder.CreateIndex(
+                name: "IX_DetalleCitas_TenantId",
+                table: "DetalleCitas",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Roles_TenantId",
+                table: "Roles",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RolUsuarios_IdRol",
                 table: "RolUsuarios",
                 column: "IdRol");
@@ -195,6 +269,26 @@ namespace Citas.Migrations
                 name: "IX_RolUsuarios_IdUsuario",
                 table: "RolUsuarios",
                 column: "IdUsuario");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RolUsuarios_TenantId",
+                table: "RolUsuarios",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Servicios_TenantId",
+                table: "Servicios",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Usuarios_PersonaId",
+                table: "Usuarios",
+                column: "PersonaId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Usuarios_TenantId",
+                table: "Usuarios",
+                column: "TenantId");
         }
 
         /// <inheritdoc />
@@ -205,6 +299,9 @@ namespace Citas.Migrations
 
             migrationBuilder.DropTable(
                 name: "DetalleCitas");
+
+            migrationBuilder.DropTable(
+                name: "Empresas");
 
             migrationBuilder.DropTable(
                 name: "RolUsuarios");
@@ -220,6 +317,9 @@ namespace Citas.Migrations
 
             migrationBuilder.DropTable(
                 name: "Usuarios");
+
+            migrationBuilder.DropTable(
+                name: "Personas");
         }
     }
 }

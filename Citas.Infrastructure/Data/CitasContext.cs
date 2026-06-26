@@ -1,10 +1,13 @@
 using System.Reflection;
-using Citas.Models;
+using Citas.Infrastructure.Persistencia;
+using Citas.Infrastructure.Persistencia.Modelos;
 using Citas.Multitenancy;
 using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Data;
 
+// DbContext de la app. Trabaja con los modelos de persistencia (*DbModel), nunca con
+// las entidades de dominio: la traducción la hacen los mappers en cada repositorio.
 public class CitasContext : DbContext
 {
     private readonly string? _tenantId;
@@ -15,73 +18,40 @@ public class CitasContext : DbContext
         _tenantId = tenantProvider.GetTenantId();
     }
 
-    /// <summary>Tenant actual; usado por los filtros globales de consulta.</summary>
+    // Tenant actual; lo usan los filtros globales de consulta.
     public string? CurrentTenantId => _tenantId;
 
-    public DbSet<Empresa> Empresas { get; set; }
-    public DbSet<Persona> Personas { get; set; }
-    public DbSet<Rol> Roles { get; set; }
-    public DbSet<Usuario> Usuarios { get; set; }
-    public DbSet<RolUsuario> RolUsuarios { get; set; }
-    public DbSet<Servicio> Servicios { get; set; }
-    public DbSet<Cita> Citas { get; set; }
-    public DbSet<DetalleCita> DetalleCitas { get; set; }
-    public DbSet<AgendaEmpleado> AgendaEmpleados { get; set; }
+    public DbSet<EmpresaDbModel> Empresas => Set<EmpresaDbModel>();
+    public DbSet<PersonaDbModel> Personas => Set<PersonaDbModel>();
+    public DbSet<RolDbModel> Roles => Set<RolDbModel>();
+    public DbSet<UsuarioDbModel> Usuarios => Set<UsuarioDbModel>();
+    public DbSet<RolUsuarioDbModel> RolUsuarios => Set<RolUsuarioDbModel>();
+    public DbSet<ServicioDbModel> Servicios => Set<ServicioDbModel>();
+    public DbSet<CitaDbModel> Citas => Set<CitaDbModel>();
+    public DbSet<DetalleCitaDbModel> DetalleCitas => Set<DetalleCitaDbModel>();
+    public DbSet<AgendaEmpleadoDbModel> AgendaEmpleados => Set<AgendaEmpleadoDbModel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Empresa (catalogo de tenants) - NO se filtra por tenant.
-        modelBuilder.Entity<Empresa>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasMaxLength(50);
-            entity.Property(e => e.Nombre).IsRequired().HasMaxLength(150);
-            entity.HasData(Empresa.Crear("DEFAULT", "Empresa por defecto"));
-        });
+        // Tablas, claves y columnas viven como anotaciones en los *DbModel.
+        // Aquí queda lo que las anotaciones no expresan bien: relaciones, precisión,
+        // defaults, el seed y la configuración común de multitenancy.
 
-        // Rol
-        modelBuilder.Entity<Rol>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.NombreRol).IsRequired().HasMaxLength(100);
-        });
+        modelBuilder.Entity<EmpresaDbModel>()
+            .HasData(new EmpresaDbModel { Id = "DEFAULT", Nombre = "Empresa por defecto", Activo = true });
 
-        // Usuario
-        modelBuilder.Entity<Usuario>(entity =>
+        modelBuilder.Entity<UsuarioDbModel>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.NombreUsuario).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Estado).HasDefaultValue(true);
             entity.HasOne(e => e.Persona)
                 .WithMany(p => p.Usuarios)
                 .HasForeignKey(e => e.PersonaId);
         });
 
-        // Persona: tabla "Personas" (P mayuscula, case-sensitive) con columnas en
-        // minuscula (id, nombre, ...); por eso se mapea de forma explicita. No es tenant.
-        modelBuilder.Entity<Persona>(entity =>
+        modelBuilder.Entity<RolUsuarioDbModel>(entity =>
         {
-            entity.ToTable("Personas");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired();
-            entity.Property(e => e.Apellido).HasColumnName("apellido").IsRequired();
-            entity.Property(e => e.Cedula).HasColumnName("cedula");
-            entity.Property(e => e.Residencia).HasColumnName("residencia");
-            entity.Property(e => e.Email).HasColumnName("email");
-            entity.Property(e => e.Edad).HasColumnName("edad");
-            entity.Property(e => e.Celular).HasColumnName("celular");
-            entity.Property(e => e.FechaNacimiento).HasColumnName("fechanacimiento");
-            // Columna agregada para el login global del cliente (case-sensitive).
-            entity.Property(e => e.ClaveHash).HasColumnName("ClaveHash");
-        });
-
-        // RolUsuario
-        modelBuilder.Entity<RolUsuario>(entity =>
-        {
-            entity.HasKey(e => e.IdRolUsuario);
             entity.HasOne(e => e.Usuario)
                 .WithMany(u => u.RolUsuarios)
                 .HasForeignKey(e => e.IdUsuario)
@@ -92,19 +62,11 @@ public class CitasContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Servicio
-        modelBuilder.Entity<Servicio>(entity =>
-        {
-            entity.HasKey(e => e.IdServicio);
-            entity.Property(e => e.NombreServicio).IsRequired().HasMaxLength(150);
-            entity.Property(e => e.Valor).HasPrecision(18, 2);
-        });
+        modelBuilder.Entity<ServicioDbModel>()
+            .Property(e => e.Valor).HasPrecision(18, 2);
 
-        // Cita
-        modelBuilder.Entity<Cita>(entity =>
+        modelBuilder.Entity<CitaDbModel>(entity =>
         {
-            entity.HasKey(e => e.IdCita);
-            entity.Property(e => e.Estado).HasMaxLength(50);
             entity.HasOne(e => e.Cliente)
                 .WithMany(u => u.CitasCliente)
                 .HasForeignKey(e => e.IdCliente)
@@ -115,10 +77,8 @@ public class CitasContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // DetalleCita
-        modelBuilder.Entity<DetalleCita>(entity =>
+        modelBuilder.Entity<DetalleCitaDbModel>(entity =>
         {
-            entity.HasKey(e => e.IdDetalle);
             entity.Property(e => e.ValorServicio).HasPrecision(18, 2);
             entity.HasOne(e => e.Cita)
                 .WithMany(c => c.DetalleCitas)
@@ -130,30 +90,20 @@ public class CitasContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // AgendaEmpleado
-        modelBuilder.Entity<AgendaEmpleado>(entity =>
-        {
-            entity.HasKey(e => e.IdHorario);
-            entity.Property(e => e.EstadoHorario).HasMaxLength(50);
-            entity.HasOne(e => e.Usuario)
-                .WithMany(u => u.AgendaEmpleado)
-                .HasForeignKey(e => e.IdUsuario)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
+        modelBuilder.Entity<AgendaEmpleadoDbModel>()
+            .HasOne(e => e.Usuario)
+            .WithMany(u => u.AgendaEmpleado)
+            .HasForeignKey(e => e.IdUsuario)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        // ===== Configuracion comun de multitenancy =====
-        // Para toda entidad que implemente ITenantEntity: columna TenantId (requerida,
-        // indexada) y un filtro global que aisla los datos por tenant en cada consulta.
+        // Multitenancy: a todo modelo que sea ITenantDbModel le ponemos índice por TenantId
+        // y un filtro global que solo deja ver los registros del tenant actual.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            if (typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
+            if (typeof(ITenantDbModel).IsAssignableFrom(entityType.ClrType))
             {
-                modelBuilder.Entity(entityType.ClrType, b =>
-                {
-                    b.Property(nameof(ITenantEntity.TenantId)).HasMaxLength(50).IsRequired();
-                    b.HasIndex(nameof(ITenantEntity.TenantId));
-                });
-
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasIndex(nameof(ITenantDbModel.TenantId));
                 ApplyTenantQueryFilter(modelBuilder, entityType.ClrType);
             }
         }
@@ -167,9 +117,9 @@ public class CitasContext : DbContext
             .Invoke(this, [modelBuilder]);
     }
 
-    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantEntity
+    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : class, ITenantDbModel
     {
-        // EF re-evalua CurrentTenantId como parametro en cada consulta.
+        // EF vuelve a leer CurrentTenantId como parámetro en cada consulta.
         modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
     }
 
@@ -185,10 +135,10 @@ public class CitasContext : DbContext
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    /// <summary>Sella el TenantId en altas y evita que se modifique en actualizaciones.</summary>
+    // Sella el TenantId en los registros nuevos y evita que se cambie en los existentes.
     private void ApplyTenantToChanges()
     {
-        foreach (var entry in ChangeTracker.Entries<ITenantEntity>())
+        foreach (var entry in ChangeTracker.Entries<ITenantDbModel>())
         {
             switch (entry.State)
             {
@@ -202,8 +152,8 @@ public class CitasContext : DbContext
                     break;
 
                 case EntityState.Modified:
-                    // El tenant de un registro existente no se puede cambiar.
-                    entry.Property(nameof(ITenantEntity.TenantId)).IsModified = false;
+                    // El tenant de un registro que ya existe no se toca.
+                    entry.Property(nameof(ITenantDbModel.TenantId)).IsModified = false;
                     break;
             }
         }

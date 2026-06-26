@@ -1,8 +1,10 @@
 using System.Text;
 using Citas.Application;
+using Citas.Data;
 using Citas.Infrastructure;
 using Citas.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
@@ -41,6 +43,15 @@ builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// En Docker arrancamos contra una base vacía, así que aplicamos las migraciones al
+// iniciar (se activa con RunMigrationsOnStartup=true, que pone el docker-compose).
+// En local contra una base que ya existe no se activa, para no pisar su historial.
+if (app.Configuration.GetValue<bool>("RunMigrationsOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<CitasContext>().Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();

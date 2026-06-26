@@ -23,6 +23,7 @@ public class AgendaEmpleadoAppService : IAgendaEmpleadoAppService
         if (dto.HoraEstimadaFin.HasValue)
             agenda.AjustarHoraFin(dto.HoraEstimadaFin.Value);
 
+        _agendas.Actualizar(agenda);
         await _uow.GuardarCambiosAsync(cancellationToken);
         return true;
     }

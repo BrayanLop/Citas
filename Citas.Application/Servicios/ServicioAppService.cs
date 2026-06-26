@@ -36,6 +36,7 @@ public class ServicioAppService : IServicioAppService
             return false;
 
         servicio.Actualizar(dto.NombreServicio, dto.Valor, dto.TiempoEstimado);
+        _servicios.Actualizar(servicio);
         await _uow.GuardarCambiosAsync(cancellationToken);
         return true;
     }

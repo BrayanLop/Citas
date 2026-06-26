@@ -29,7 +29,8 @@ public class UsuarioAppService : IUsuarioAppService
     public async Task<UsuarioResponseDto> CrearAsync(CreateUsuarioDto dto, CancellationToken cancellationToken = default)
     {
         var usuario = Usuario.Crear(dto.NombreUsuario);
-        await _usuarios.AgregarAsync(usuario, cancellationToken);
+        // tenant = null: el contexto lo toma del tenant actual del token.
+        await _usuarios.AgregarAsync(usuario, null, cancellationToken);
         await _uow.GuardarCambiosAsync(cancellationToken);
         return MapToDto(usuario);
     }

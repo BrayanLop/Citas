@@ -62,6 +62,7 @@ public class CitaAppService : ICitaAppService
         if (dto.Estado is not null)
             cita.CambiarEstadoA(dto.Estado);
 
+        _citas.Actualizar(cita);
         await _uow.GuardarCambiosAsync(cancellationToken);
         return true;
     }
@@ -75,6 +76,7 @@ public class CitaAppService : ICitaAppService
         if (dto.Estado is not null)
             cita.CambiarEstadoA(dto.Estado);
 
+        _citas.Actualizar(cita);
         await _uow.GuardarCambiosAsync(cancellationToken);
         return true;
     }

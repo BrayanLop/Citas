@@ -96,8 +96,8 @@ public class AuthAppService : IAuthAppService
         if (usuario is null)
         {
             usuario = Usuario.CrearParaPersona(string.IsNullOrWhiteSpace(nombre) ? persona.Nombre : nombre, personaId);
-            usuario.TenantId = tenant; // El token de login no trae tenant; se sella explícitamente.
-            await _usuarios.AgregarAsync(usuario, cancellationToken);
+            // El token de login todavía no trae empresa; sellamos el tenant explícitamente.
+            await _usuarios.AgregarAsync(usuario, tenant, cancellationToken);
             await _uow.GuardarCambiosAsync(cancellationToken);
 
             await AsignarRolAsync(usuario.Id, tenant, "Cliente", cancellationToken);
@@ -134,8 +134,8 @@ public class AuthAppService : IAuthAppService
         if (usuario is null)
         {
             usuario = Usuario.Crear(nombre);
-            usuario.TenantId = tenant; // El llamador no está en un contexto de tenant; se sella explícitamente.
-            await _usuarios.AgregarAsync(usuario, cancellationToken);
+            // El llamador no está dentro de un tenant; sellamos la empresa explícitamente.
+            await _usuarios.AgregarAsync(usuario, tenant, cancellationToken);
             await _uow.GuardarCambiosAsync(cancellationToken);
 
             await AsignarRolAsync(usuario.Id, tenant, "Empleado", cancellationToken);
@@ -176,16 +176,14 @@ public class AuthAppService : IAuthAppService
         if (rol is null)
         {
             rol = Rol.Crear(nombreRol);
-            rol.TenantId = tenant;
-            await _roles.AgregarAsync(rol, cancellationToken);
+            await _roles.AgregarAsync(rol, tenant, cancellationToken);
             await _uow.GuardarCambiosAsync(cancellationToken);
         }
 
         if (!await _roles.ExisteAsignacionAsync(usuarioId, rol.Id, cancellationToken))
         {
             var asignacion = RolUsuario.Crear(usuarioId, rol.Id);
-            asignacion.TenantId = tenant;
-            await _roles.AgregarAsignacionAsync(asignacion, cancellationToken);
+            await _roles.AgregarAsignacionAsync(asignacion, tenant, cancellationToken);
             await _uow.GuardarCambiosAsync(cancellationToken);
         }
     }

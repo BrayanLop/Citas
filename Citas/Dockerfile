@@ -25,13 +25,7 @@ WORKDIR /app
 # Copiar la aplicación publicada
 COPY --from=publish /app/publish .
 
-# Exponer puerto
+# La API escucha en 8080 dentro del contenedor (lo fija ASPNETCORE_URLS en el compose)
 EXPOSE 8080
-EXPOSE 8443
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/openapi/v1.json || exit 1
-
-# Comando para ejecutar
 ENTRYPOINT ["dotnet", "Citas.dll"]

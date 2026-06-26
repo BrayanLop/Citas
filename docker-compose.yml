@@ -1,0 +1,74 @@
+# Levanta todo el sistema con un solo comando: base de datos + API + frontend.
+#
+#   docker compose up --build
+#
+# Frontend:  http://localhost:5173
+# API:       http://localhost:8080  (docs en /scalar/v1, health en /health)
+#
+# Nota: el frontend vive en un repo aparte; este compose lo construye desde
+# ../citas-frontend, así que ese repo debe estar clonado al lado de este.
+services:
+  # Base de datos PostgreSQL (datos locales, no es la de producción)
+  postgres:
+    image: postgres:16-alpine
+    container_name: citas-postgres
+    environment:
+      POSTGRES_DB: citas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - citas-network
+
+  # API .NET (arranca, aplica migraciones y queda escuchando en 8080)
+  api:
+    build:
+      context: .
+      dockerfile: Citas/Dockerfile
+    container_name: citas-api
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=citas;Username=postgres;Password=postgres"
+      Jwt__Issuer: CitasApi
+      Jwt__Audience: CitasApiClients
+      Jwt__Key: "clave-de-desarrollo-local-cambiala-en-produccion-1234"
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      # Aplica las migraciones EF al arrancar (la base nace vacía).
+      RunMigrationsOnStartup: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - citas-network
+    restart: unless-stopped
+
+  # Frontend React servido por nginx (sirve la SPA y proxya /api a la API)
+  frontend:
+    build:
+      context: ../citas-frontend
+      dockerfile: Dockerfile
+    container_name: citas-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    networks:
+      - citas-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  citas-network:
+    driver: bridge

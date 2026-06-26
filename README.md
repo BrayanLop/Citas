@@ -25,7 +25,26 @@ entidades de EF. En `Infrastructure/Persistencia` hay un modelo por tabla
 (`CitaDbModel`, `UsuarioDbModel`, ...) y un **mapper** por agregado que traduce
 dominio ↔ base de datos. Así el dominio queda limpio y la persistencia aislada.
 
-## Requisitos
+## Arranque rápido con Docker (todo el sistema)
+
+La forma más fácil de levantar **base de datos + API + frontend** de una sola vez.
+Solo necesitas tener el repo del frontend clonado al lado de este
+(`../citas-frontend`) y Docker corriendo:
+
+```bash
+docker compose up --build
+```
+
+Y listo:
+
+- Frontend: <http://localhost:5173>
+- API: <http://localhost:8080> (docs en `/scalar/v1`, health en `/health`)
+
+El Postgres arranca vacío y la API le aplica las migraciones sola al iniciar, así
+que no hay que crear tablas a mano. Para apagar todo: `docker compose down`
+(agrega `-v` si quieres borrar también los datos).
+
+## Requisitos (si lo corres sin Docker)
 
 - .NET SDK 10
 - Una base de datos PostgreSQL (sirve local, Supabase, Railway, etc.)

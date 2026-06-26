@@ -1,14 +1,16 @@
 using Citas.Data;
 using Citas.Domain.Agendamiento;
+using Citas.Infrastructure.Persistencia;
+using Citas.Infrastructure.Persistencia.Mapeadores;
+using Citas.Infrastructure.Persistencia.Modelos;
 using Citas.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Citas.Infrastructure.Agendamiento;
 
-/// <summary>
-/// Implementación de <see cref="ICitaRepository"/> sobre EF Core. El aislamiento por
-/// tenant lo aplican los filtros globales del <see cref="CitasContext"/>.
-/// </summary>
+// Implementa el puerto ICitaRepository sobre EF Core. Lee con AsNoTracking y devuelve
+// dominio (vía mapper); escribe traduciendo el dominio de vuelta a CitaDbModel.
+// El aislamiento por tenant lo aplican los filtros globales del contexto.
 public class CitaRepository : ICitaRepository
 {
     private readonly CitasContext _db;
@@ -21,6 +23,7 @@ public class CitaRepository : ICitaRepository
         CancellationToken cancellationToken = default)
     {
         var query = _db.Citas
+            .AsNoTracking()
             .Include(c => c.Cliente)
             .Include(c => c.Empleado)
             .AsQueryable();
@@ -30,23 +33,36 @@ public class CitaRepository : ICitaRepository
         if (empleadoId.HasValue)
             query = query.Where(c => c.IdEmpleado == empleadoId.Value);
 
-        return await query
+        var filas = await query
             .OrderByDescending(c => c.FechaCita)
             .ThenByDescending(c => c.HoraEstimadaCita)
             .ToListAsync(cancellationToken);
+
+        return filas.Select(CitaMapper.ToDomain).ToList();
     }
 
     public async Task<Cita?> ObtenerPorIdAsync(int idCita, CancellationToken cancellationToken = default)
-        => await _db.Citas
+    {
+        var fila = await _db.Citas
+            .AsNoTracking()
             .Include(c => c.Cliente)
             .Include(c => c.Empleado)
             .FirstOrDefaultAsync(c => c.IdCita == idCita, cancellationToken);
 
-    public async Task<bool> ExisteUsuarioAsync(int usuarioId, CancellationToken cancellationToken = default)
-        => await _db.Usuarios.AnyAsync(u => u.Id == usuarioId, cancellationToken);
+        return fila is null ? null : CitaMapper.ToDomain(fila);
+    }
+
+    public Task<bool> ExisteUsuarioAsync(int usuarioId, CancellationToken cancellationToken = default)
+        => _db.Usuarios.AsNoTracking().AnyAsync(u => u.Id == usuarioId, cancellationToken);
 
     public async Task AgregarAsync(Cita cita, CancellationToken cancellationToken = default)
-        => await _db.Citas.AddAsync(cita, cancellationToken);
+    {
+        var fila = CitaMapper.ToDbModel(cita);
+        await _db.Citas.AddAsync(fila, cancellationToken);
+        _db.SincronizarIdTrasGuardar(() => cita.EstablecerIdentidad(fila.IdCita));
+    }
 
-    public void Eliminar(Cita cita) => _db.Citas.Remove(cita);
+    public void Actualizar(Cita cita) => _db.Citas.Update(CitaMapper.ToDbModel(cita));
+
+    public void Eliminar(Cita cita) => _db.Citas.Remove(new CitaDbModel { IdCita = cita.IdCita });
 }

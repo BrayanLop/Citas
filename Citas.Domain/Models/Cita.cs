@@ -3,13 +3,10 @@ using Citas.Domain.Common;
 
 namespace Citas.Models;
 
-/// <summary>
-/// Raíz de agregado del contexto de Agendamiento. Encapsula las reglas de una cita:
-/// solo se crea a través de <see cref="Programar"/> y solo cambia de estado o se
-/// reprograma mediante métodos que validan las invariantes. Los setters son privados
-/// para que ninguna capa externa pueda dejar la cita en un estado inválido.
-/// </summary>
-public class Cita : ITenantEntity
+// La cita es la raíz del agregado de agendamiento. La idea es que nadie pueda dejarla
+// en un estado inconsistente desde fuera: se crea con Programar(), cambia de estado y se
+// reprograma solo por métodos que validan las reglas, y todos los setters son privados.
+public class Cita
 {
     private Cita() { }
 
@@ -22,15 +19,11 @@ public class Cita : ITenantEntity
     public TimeSpan? HoraEstimadaFin { get; private set; }
     public string? Observaciones { get; private set; }
 
-    public string TenantId { get; set; } = string.Empty;
-
+    // Datos del cliente y el empleado que el mapper rellena al leer (para mostrar nombres).
     public Usuario? Cliente { get; private set; }
     public Usuario? Empleado { get; private set; }
-    public ICollection<DetalleCita> DetalleCitas { get; private set; } = [];
 
-    /// <summary>
-    /// Programa una nueva cita en estado Pendiente, validando las invariantes básicas.
-    /// </summary>
+    // Programa una cita nueva en estado Pendiente.
     public static Cita Programar(
         int idCliente,
         int idEmpleado,
@@ -59,13 +52,38 @@ public class Cita : ITenantEntity
         };
     }
 
+    // Reconstruye una cita ya existente a partir de lo que viene de la base de datos.
+    // No valida reglas: esos datos ya pasaron por Programar() en su momento.
+    public static Cita Rehidratar(
+        int idCita,
+        int idCliente,
+        int idEmpleado,
+        string estado,
+        DateTime fechaCita,
+        TimeSpan horaInicio,
+        TimeSpan? horaFin,
+        string? observaciones,
+        Usuario? cliente,
+        Usuario? empleado)
+        => new()
+        {
+            IdCita = idCita,
+            IdCliente = idCliente,
+            IdEmpleado = idEmpleado,
+            Estado = estado,
+            FechaCita = fechaCita,
+            HoraEstimadaCita = horaInicio,
+            HoraEstimadaFin = horaFin,
+            Observaciones = observaciones,
+            Cliente = cliente,
+            Empleado = empleado,
+        };
+
     public void Confirmar() => CambiarEstadoA(EstadoCita.Confirmada);
     public void Atender() => CambiarEstadoA(EstadoCita.Atendida);
     public void Cancelar() => CambiarEstadoA(EstadoCita.Cancelada);
 
-    /// <summary>
-    /// Cambia el estado validando que la transición sea permitida.
-    /// </summary>
+    // Cambia el estado solo si la transición está permitida (ver EstadoCita).
     public void CambiarEstadoA(string nuevoEstado)
     {
         if (!EstadoCita.EsValido(nuevoEstado))
@@ -78,9 +96,7 @@ public class Cita : ITenantEntity
         Estado = nuevoEstado;
     }
 
-    /// <summary>
-    /// Reprograma la cita; no se permite si ya fue atendida o cancelada.
-    /// </summary>
+    // Mueve la cita de fecha/hora. Una cita atendida o cancelada ya no se toca.
     public void Reprogramar(DateTime fechaCita, TimeSpan horaInicio, TimeSpan? horaFin)
     {
         if (Estado is EstadoCita.Atendida or EstadoCita.Cancelada)
@@ -93,6 +109,12 @@ public class Cita : ITenantEntity
     }
 
     public void ActualizarObservaciones(string? observaciones) => Observaciones = observaciones;
+
+    // La persistencia asigna el id real una sola vez, tras el primer guardado.
+    public void EstablecerIdentidad(int id)
+    {
+        if (IdCita == 0) IdCita = id;
+    }
 
     private static void ValidarFranja(TimeSpan horaInicio, TimeSpan? horaFin)
     {

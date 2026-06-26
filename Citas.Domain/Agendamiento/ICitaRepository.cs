@@ -23,5 +23,8 @@ public interface ICitaRepository
 
     Task AgregarAsync(Cita cita, CancellationToken cancellationToken = default);
 
+    /// <summary>Persiste los cambios de una cita ya existente.</summary>
+    void Actualizar(Cita cita);
+
     void Eliminar(Cita cita);
 }

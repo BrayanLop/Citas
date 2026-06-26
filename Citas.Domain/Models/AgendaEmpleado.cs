@@ -2,12 +2,9 @@ using Citas.Domain.Common;
 
 namespace Citas.Models;
 
-/// <summary>
-/// Franja horaria reservada en la agenda de un empleado (contexto Agendamiento).
-/// </summary>
-public class AgendaEmpleado : ITenantEntity
+// Franja horaria reservada en la agenda de un empleado.
+public class AgendaEmpleado
 {
-    // Constructor sin parámetros para EF Core.
     private AgendaEmpleado() { }
 
     public int IdHorario { get; private set; }
@@ -16,11 +13,25 @@ public class AgendaEmpleado : ITenantEntity
     public TimeSpan HoraEstimadaCita { get; private set; }
     public TimeSpan HoraEstimadaFin { get; private set; }
     public string EstadoHorario { get; private set; } = "Disponible";
-    public string TenantId { get; set; } = string.Empty;
 
-    public Usuario? Usuario { get; private set; }
+    public static AgendaEmpleado Rehidratar(
+        int idHorario,
+        int idUsuario,
+        DateTime fechaReservada,
+        TimeSpan horaInicio,
+        TimeSpan horaFin,
+        string estadoHorario)
+        => new()
+        {
+            IdHorario = idHorario,
+            IdUsuario = idUsuario,
+            FechaReservada = fechaReservada,
+            HoraEstimadaCita = horaInicio,
+            HoraEstimadaFin = horaFin,
+            EstadoHorario = estadoHorario,
+        };
 
-    /// <summary>Ajusta la hora de fin del horario, validando que sea posterior al inicio.</summary>
+    // Mueve la hora de fin, siempre que quede después del inicio.
     public void AjustarHoraFin(TimeSpan horaFin)
     {
         if (horaFin <= HoraEstimadaCita)

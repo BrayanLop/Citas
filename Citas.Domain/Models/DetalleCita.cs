@@ -1,14 +1,12 @@
 namespace Citas.Models;
 
-public class DetalleCita : ITenantEntity
+// Línea de detalle de una cita (un servicio prestado dentro de la cita).
+// Forma parte del agregado Cita.
+public class DetalleCita
 {
     public int IdDetalle { get; set; }
     public int IdCita { get; set; }
     public int IdServicio { get; set; }
     public decimal ValorServicio { get; set; }
     public int TiempoEstimado { get; set; }
-    public string TenantId { get; set; } = string.Empty;
-
-    public Cita? Cita { get; set; }
-    public Servicio? Servicio { get; set; }
 }

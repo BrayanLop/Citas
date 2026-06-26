@@ -2,22 +2,27 @@ using Citas.Domain.Common;
 
 namespace Citas.Models;
 
-/// <summary>Rol dentro de un tenant (contexto Acceso).</summary>
-public class Rol : ITenantEntity
+// Rol dentro de una empresa (Cliente, Empleado, ...).
+public class Rol
 {
-    // Constructor sin parámetros para EF Core.
     private Rol() { }
 
     public int Id { get; private set; }
     public string NombreRol { get; private set; } = string.Empty;
-    public string TenantId { get; set; } = string.Empty;
-
-    public ICollection<RolUsuario> RolUsuarios { get; private set; } = [];
 
     public static Rol Crear(string nombreRol)
     {
         if (string.IsNullOrWhiteSpace(nombreRol))
             throw new DomainException("El nombre del rol es obligatorio.");
         return new Rol { NombreRol = nombreRol.Trim() };
+    }
+
+    public static Rol Rehidratar(int id, string nombreRol)
+        => new() { Id = id, NombreRol = nombreRol };
+
+    // La persistencia asigna el id real una sola vez, tras el primer guardado.
+    public void EstablecerIdentidad(int id)
+    {
+        if (Id == 0) Id = id;
     }
 }

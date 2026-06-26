@@ -10,7 +10,12 @@ public interface IUsuarioRepository
 
     Task<Usuario?> ObtenerPorIdAsync(int id, CancellationToken cancellationToken = default);
 
-    Task AgregarAsync(Usuario usuario, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Da de alta un usuario. Si <paramref name="tenant"/> viene informado, se sella ese
+    /// tenant explícitamente (útil en el login, donde el token aún no trae empresa). Si es
+    /// null, lo asigna el contexto a partir del tenant actual.
+    /// </summary>
+    Task AgregarAsync(Usuario usuario, string? tenant, CancellationToken cancellationToken = default);
 
     void Eliminar(Usuario usuario);
 

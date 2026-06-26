@@ -11,5 +11,8 @@ public interface IServicioRepository
 
     Task AgregarAsync(Servicio servicio, CancellationToken cancellationToken = default);
 
+    /// <summary>Persiste los cambios de un servicio ya existente.</summary>
+    void Actualizar(Servicio servicio);
+
     void Eliminar(Servicio servicio);
 }

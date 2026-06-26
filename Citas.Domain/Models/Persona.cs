@@ -2,14 +2,11 @@ using Citas.Domain.Common;
 
 namespace Citas.Models;
 
-/// <summary>
-/// Identidad global de una persona (contexto Acceso); raíz de agregado. La tabla fue
-/// creada manualmente con nombres en minúscula (personas, id, nombre, ...), por eso se
-/// mapea explícitamente en OnModelCreating. NO pertenece a un tenant (no tiene TenantId).
-/// </summary>
+// Identidad global del cliente (la misma persona puede entrar a varias empresas).
+// No pertenece a ningún tenant. La tabla se creó a mano con columnas en minúscula;
+// ese detalle vive en el modelo de persistencia, no aquí.
 public class Persona
 {
-    // Constructor sin parámetros para EF Core.
     private Persona() { }
 
     public int Id { get; private set; }
@@ -22,15 +19,10 @@ public class Persona
     public string? Celular { get; private set; }
     public DateTime? FechaNacimiento { get; private set; }
 
-    /// <summary>Hash de la contraseña para el login global del cliente (PBKDF2).</summary>
+    // Hash de la contraseña del login global (PBKDF2).
     public string? ClaveHash { get; private set; }
 
-    public ICollection<Usuario> Usuarios { get; private set; } = [];
-
-    /// <summary>
-    /// Registra una nueva persona con credenciales para el login global del cliente.
-    /// El <paramref name="claveHash"/> ya debe venir hasheado (responsabilidad de la app).
-    /// </summary>
+    // Registra una persona nueva. La clave ya debe llegar hasheada desde la app.
     public static Persona Registrar(
         string nombre,
         string? apellido,
@@ -55,6 +47,38 @@ public class Persona
         };
     }
 
-    /// <summary>Nombre completo para mostrar.</summary>
+    // Reconstruye una persona existente desde la base de datos.
+    public static Persona Rehidratar(
+        int id,
+        string nombre,
+        string apellido,
+        string? cedula,
+        string? residencia,
+        string? email,
+        int? edad,
+        string? celular,
+        DateTime? fechaNacimiento,
+        string? claveHash)
+        => new()
+        {
+            Id = id,
+            Nombre = nombre,
+            Apellido = apellido,
+            Cedula = cedula,
+            Residencia = residencia,
+            Email = email,
+            Edad = edad,
+            Celular = celular,
+            FechaNacimiento = fechaNacimiento,
+            ClaveHash = claveHash,
+        };
+
+    // La persistencia asigna el id real una sola vez, tras el primer guardado.
+    public void EstablecerIdentidad(int id)
+    {
+        if (Id == 0) Id = id;
+    }
+
+    // Nombre completo para mostrar.
     public string NombreCompleto => $"{Nombre} {Apellido}".Trim();
 }

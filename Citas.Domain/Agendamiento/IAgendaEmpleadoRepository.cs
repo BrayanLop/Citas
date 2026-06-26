@@ -6,4 +6,7 @@ namespace Citas.Domain.Agendamiento;
 public interface IAgendaEmpleadoRepository
 {
     Task<AgendaEmpleado?> ObtenerPorIdAsync(int idHorario, CancellationToken cancellationToken = default);
+
+    /// <summary>Persiste los cambios de un horario ya existente.</summary>
+    void Actualizar(AgendaEmpleado agenda);
 }

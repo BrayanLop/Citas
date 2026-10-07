@@ -162,64 +162,56 @@ namespace Citas.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Empresas");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = "DEFAULT",
-                            Activo = true,
-                            Nombre = "Empresa por defecto"
-                        });
                 });
 
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.PersonaDbModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Apellido")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("apellido");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Cedula")
-                        .HasColumnType("text")
-                        .HasColumnName("cedula");
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("Celular")
-                        .HasColumnType("text")
-                        .HasColumnName("celular");
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("ClaveHash")
-                        .HasColumnType("text")
-                        .HasColumnName("ClaveHash");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int?>("Edad")
-                        .HasColumnType("integer")
-                        .HasColumnName("edad");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Email")
-                        .HasColumnType("text")
-                        .HasColumnName("email");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime?>("FechaNacimiento")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fechanacimiento");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nombre");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Residencia")
-                        .HasColumnType("text")
-                        .HasColumnName("residencia");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.ToTable("Personas");
                 });
@@ -335,6 +327,9 @@ namespace Citas.Infrastructure.Migrations
                     b.Property<int?>("PersonaId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("PersonaNaturalId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -345,6 +340,14 @@ namespace Citas.Infrastructure.Migrations
                     b.HasIndex("PersonaId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "PersonaId")
+                        .IsUnique()
+                        .HasFilter("\"PersonaId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "PersonaNaturalId")
+                        .IsUnique()
+                        .HasFilter("\"PersonaNaturalId\" IS NOT NULL");
 
                     b.ToTable("Usuarios");
                 });

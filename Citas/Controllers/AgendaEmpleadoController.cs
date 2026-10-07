@@ -1,4 +1,5 @@
 using Citas.Application.Agendamiento;
+using Citas.Autorizacion;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,7 +7,7 @@ namespace Citas.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-[Authorize]
+[Authorize(Policy = Politicas.Administrador)]
 public class AgendaEmpleadoController : ControllerBase
 {
     private readonly IAgendaEmpleadoAppService _agendas;

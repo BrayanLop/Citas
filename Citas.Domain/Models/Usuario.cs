@@ -3,7 +3,8 @@ using Citas.Domain.Common;
 namespace Citas.Models;
 
 // Usuario dentro de una empresa. Puede venir de una Persona global (cliente que se
-// registró) o existir solo en la empresa (empleado dado de alta en el tenant).
+// registró en Citas), de una persona de Natural (personal de la empresa, vinculado por
+// PersonaNaturalId) o existir solo en la empresa (alta manual en el tenant).
 public class Usuario
 {
     private Usuario() { }
@@ -14,10 +15,17 @@ public class Usuario
     public bool? Estado { get; private set; } = true;
     public int? PersonaId { get; private set; }
 
+    // Id de la persona en Natural cuando el usuario es personal de la empresa (barbero,
+    // administrador...). Es único por tenant y es lo único que lo vincula con Natural.
+    public int? PersonaNaturalId { get; private set; }
+
+    public bool EsPersonalNatural => PersonaNaturalId.HasValue;
+    public bool EstaActivo => Estado != false;
+
     // Roles del usuario; el mapper los rellena cuando se necesitan (p. ej. listado con rol).
     public ICollection<RolUsuario> RolUsuarios { get; private set; } = [];
 
-    // Usuario suelto, sin persona global detrás (el caso del empleado).
+    // Usuario suelto, sin persona global detrás (alta manual en el tenant).
     public static Usuario Crear(string nombreUsuario)
     {
         if (string.IsNullOrWhiteSpace(nombreUsuario))
@@ -30,6 +38,17 @@ public class Usuario
     {
         var usuario = Crear(nombreUsuario);
         usuario.PersonaId = personaId;
+        return usuario;
+    }
+
+    // Usuario que representa a personal de Natural; se crea solo la primera vez que esa
+    // persona entra a Citas con su token de Natural.
+    public static Usuario CrearParaPersonalNatural(string nombreUsuario, int personaNaturalId)
+    {
+        if (personaNaturalId <= 0)
+            throw new DomainException("La persona de Natural no es válida.");
+        var usuario = Crear(nombreUsuario);
+        usuario.PersonaNaturalId = personaNaturalId;
         return usuario;
     }
 
@@ -46,6 +65,7 @@ public class Usuario
         string? claveHash,
         bool? estado,
         int? personaId,
+        int? personaNaturalId,
         IEnumerable<RolUsuario>? roles = null)
     {
         var usuario = new Usuario
@@ -55,6 +75,7 @@ public class Usuario
             ClaveHash = claveHash,
             Estado = estado,
             PersonaId = personaId,
+            PersonaNaturalId = personaNaturalId,
         };
         if (roles is not null)
             usuario.RolUsuarios = roles.ToList();

@@ -2,13 +2,15 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Citas.Application.Acceso.Abstractions;
-using Citas.Multitenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Citas.Infrastructure.Acceso;
 
-/// <summary>Adaptador del puerto <see cref="ITokenService"/> con JWT firmado (HMAC-SHA256).</summary>
+/// <summary>
+/// Adaptador del puerto <see cref="ITokenService"/> con JWT firmado (HMAC-SHA256) con
+/// la configuración "Jwt" de Citas. Solo emite tokens de cliente (mode = cliente).
+/// </summary>
 public class JwtTokenService : ITokenService
 {
     private readonly IConfiguration _config;
@@ -22,6 +24,7 @@ public class JwtTokenService : ITokenService
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expira = DateTime.UtcNow.AddHours(horas);
 
+        // Al pasar los claims al constructor se escriben con su tipo tal cual (cortos).
         var token = new JwtSecurityToken(
             issuer: jwt["Issuer"],
             audience: jwt["Audience"],
@@ -32,45 +35,17 @@ public class JwtTokenService : ITokenService
         return (new JwtSecurityTokenHandler().WriteToken(token), expira);
     }
 
-    public bool EmpleadoExternoEsValido(string? naturalToken)
-    {
-        var clave = _config["NaturalJwt:Key"];
-        // Sin clave compartida configurada, la validación está deshabilitada.
-        if (string.IsNullOrWhiteSpace(clave)) return true;
-        if (string.IsNullOrWhiteSpace(naturalToken)) return false;
-
-        try
-        {
-            new JwtSecurityTokenHandler().ValidateToken(naturalToken, new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(clave)),
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromMinutes(2),
-            }, out _);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static IEnumerable<Claim> ConstruirClaims(TokenClaims c)
     {
-        var claims = new List<Claim>();
+        var claims = new List<Claim> { new(CitasClaimTypes.Modo, CitasClaimTypes.ModoCliente) };
         if (!string.IsNullOrWhiteSpace(c.Tenant))
-            claims.Add(new Claim(TenantClaimTypes.Tenant, c.Tenant));
+            claims.Add(new Claim(CitasClaimTypes.Tenant, c.Tenant));
         if (c.PersonaId is { } personaId)
-            claims.Add(new Claim("personaId", personaId.ToString()));
+            claims.Add(new Claim(CitasClaimTypes.PersonaId, personaId.ToString()));
         if (c.UserId is { } userId)
-            claims.Add(new Claim("userId", userId.ToString()));
+            claims.Add(new Claim(CitasClaimTypes.UsuarioId, userId.ToString()));
         if (!string.IsNullOrWhiteSpace(c.Nombre))
-            claims.Add(new Claim(ClaimTypes.Name, c.Nombre));
-        if (!string.IsNullOrWhiteSpace(c.Modo))
-            claims.Add(new Claim("mode", c.Modo));
+            claims.Add(new Claim(CitasClaimTypes.Nombre, c.Nombre));
         return claims;
     }
 }

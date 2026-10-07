@@ -35,18 +35,6 @@ public class AuthAppService : IAuthAppService
         _uow = uow;
     }
 
-    public async Task<TokenResponseDto> GenerarTokenAsync(TokenRequestDto dto, CancellationToken cancellationToken = default)
-    {
-        var empresa = await _empresas.ObtenerPorIdAsync(dto.Tenant, cancellationToken);
-        if (empresa is null || !empresa.Activo)
-            throw new DomainException("Empresa/tenant no existe o está inactiva.");
-
-        var nombre = string.IsNullOrWhiteSpace(dto.Usuario) ? "demo" : dto.Usuario;
-        var (token, expira) = _token.Generar(new TokenClaims(Tenant: empresa.Id, Nombre: nombre));
-
-        return new TokenResponseDto { Token = token, Tenant = empresa.Id, ExpiraUtc = expira };
-    }
-
     public async Task<ClienteAuthResponseDto> RegisterAsync(RegisterClienteDto dto, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
@@ -100,49 +88,11 @@ public class AuthAppService : IAuthAppService
             await _usuarios.AgregarAsync(usuario, tenant, cancellationToken);
             await _uow.GuardarCambiosAsync(cancellationToken);
 
-            await AsignarRolAsync(usuario.Id, tenant, "Cliente", cancellationToken);
+            await AsignadorRoles.AsignarAsync(_roles, _uow, usuario.Id, tenant, AsignadorRoles.Cliente, cancellationToken);
         }
 
         var (token, expira) = _token.Generar(new TokenClaims(
-            Tenant: tenant, PersonaId: personaId, UserId: usuario.Id, Nombre: nombre, Modo: "cliente"));
-
-        return new SelectEmpresaResponseDto
-        {
-            Token = token,
-            Tenant = tenant,
-            EmpresaNombre = empresa.Nombre,
-            UserId = usuario.Id,
-            ExpiraUtc = expira,
-        };
-    }
-
-    public async Task<SelectEmpresaResponseDto> TokenEmpleadoAsync(EmpleadoTokenRequestDto dto, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(dto.Tenant) || string.IsNullOrWhiteSpace(dto.Nombre))
-            throw new DomainException("Tenant y nombre son obligatorios.");
-
-        if (!_token.EmpleadoExternoEsValido(dto.NaturalToken))
-            throw new UnauthorizedAppException("Token de Natural inválido o ausente.");
-
-        var tenant = dto.Tenant.Trim();
-        var empresa = await _empresas.ObtenerPorIdAsync(tenant, cancellationToken);
-        if (empresa is null || !empresa.Activo)
-            throw new DomainException("Empresa no existe o está inactiva.");
-
-        var nombre = dto.Nombre.Trim();
-        var usuario = await _usuarios.BuscarEnTenantPorNombreAsync(tenant, nombre, cancellationToken);
-        if (usuario is null)
-        {
-            usuario = Usuario.Crear(nombre);
-            // El llamador no está dentro de un tenant; sellamos la empresa explícitamente.
-            await _usuarios.AgregarAsync(usuario, tenant, cancellationToken);
-            await _uow.GuardarCambiosAsync(cancellationToken);
-
-            await AsignarRolAsync(usuario.Id, tenant, "Empleado", cancellationToken);
-        }
-
-        var (token, expira) = _token.Generar(new TokenClaims(
-            Tenant: tenant, UserId: usuario.Id, Nombre: nombre, Modo: "empresa"));
+            Tenant: tenant, PersonaId: personaId, UserId: usuario.Id, Nombre: nombre));
 
         return new SelectEmpresaResponseDto
         {
@@ -157,8 +107,7 @@ public class AuthAppService : IAuthAppService
     private ClienteAuthResponseDto BuildClienteAuth(Persona persona)
     {
         var nombre = persona.NombreCompleto;
-        var (token, expira) = _token.Generar(new TokenClaims(
-            PersonaId: persona.Id, Nombre: nombre, Modo: "cliente"));
+        var (token, expira) = _token.Generar(new TokenClaims(PersonaId: persona.Id, Nombre: nombre));
 
         return new ClienteAuthResponseDto
         {
@@ -167,24 +116,5 @@ public class AuthAppService : IAuthAppService
             Nombre = nombre,
             ExpiraUtc = expira,
         };
-    }
-
-    /// <summary>Asegura que exista el rol en el tenant y lo asigna al usuario.</summary>
-    private async Task AsignarRolAsync(int usuarioId, string tenant, string nombreRol, CancellationToken cancellationToken)
-    {
-        var rol = await _roles.BuscarEnTenantPorNombreAsync(tenant, nombreRol, cancellationToken);
-        if (rol is null)
-        {
-            rol = Rol.Crear(nombreRol);
-            await _roles.AgregarAsync(rol, tenant, cancellationToken);
-            await _uow.GuardarCambiosAsync(cancellationToken);
-        }
-
-        if (!await _roles.ExisteAsignacionAsync(usuarioId, rol.Id, cancellationToken))
-        {
-            var asignacion = RolUsuario.Crear(usuarioId, rol.Id);
-            await _roles.AgregarAsignacionAsync(asignacion, tenant, cancellationToken);
-            await _uow.GuardarCambiosAsync(cancellationToken);
-        }
     }
 }

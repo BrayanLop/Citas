@@ -1,4 +1,5 @@
 # Levanta todo el sistema con un solo comando: base de datos + API + frontend.
+# Antes: cp .env.example .env  (y rellena los valores; el .env no se versiona).
 #
 #   docker compose up --build
 #
@@ -13,15 +14,15 @@ services:
     image: postgres:16-alpine
     container_name: citas-postgres
     environment:
-      POSTGRES_DB: citas
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-citas}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,14 +36,18 @@ services:
       dockerfile: Citas/Dockerfile
     container_name: citas-api
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=citas;Username=postgres;Password=postgres"
-      Jwt__Issuer: CitasApi
-      Jwt__Audience: CitasApiClients
-      Jwt__Key: "clave-de-desarrollo-local-cambiala-en-produccion-1234"
-      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-citas};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}"
+      Jwt__Issuer: ${Jwt__Issuer:-CitasApi}
+      Jwt__Audience: ${Jwt__Audience:-CitasApiClients}
+      Jwt__Key: ${Jwt__Key:?Define Jwt__Key en .env}
+      NaturalJwt__Key: ${NaturalJwt__Key:?Define NaturalJwt__Key en .env (misma clave JWT de Natural)}
+      NaturalJwt__Issuer: ${NaturalJwt__Issuer:-Natural.Api}
+      NaturalJwt__Audience: ${NaturalJwt__Audience:-Natural.Client}
+      Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0:-}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: "http://+:8080"
       # Aplica las migraciones EF al arrancar (la base nace vacía).
-      RunMigrationsOnStartup: "true"
+      RunMigrationsOnStartup: ${RunMigrationsOnStartup:-true}
     ports:
       - "8080:8080"
     depends_on:

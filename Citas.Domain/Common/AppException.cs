@@ -28,3 +28,11 @@ public sealed class UnauthorizedAppException : AppException
     public override string Title => "No autorizado";
     public UnauthorizedAppException(string message) : base(message) { }
 }
+
+/// <summary>Autenticado pero sin permiso para la operación (HTTP 403).</summary>
+public sealed class ForbiddenAppException : AppException
+{
+    public override int StatusCode => 403;
+    public override string Title => "Prohibido";
+    public ForbiddenAppException(string message) : base(message) { }
+}

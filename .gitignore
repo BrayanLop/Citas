@@ -365,3 +365,11 @@ FodyWeavers.xsd
 # Configuracion local con secretos (connection string real, clave JWT).
 # Se versiona appsettings.Example.json como plantilla; cada quien crea el suyo.
 appsettings.json
+# Variables de entorno locales (secretos). Solo se versiona la plantilla .env.example.
+.env
+.env.*
+!.env.example
+# Configuración local por desarrollador.
+appsettings.Local.json
+appsettings.*.Local.json
+*.local.json

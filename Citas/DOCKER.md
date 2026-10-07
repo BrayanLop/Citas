@@ -76,19 +76,15 @@ docker-compose up -d
 
 ## 🔐 Variables de entorno
 
-Las credenciales están en `docker-compose.yml`. Para producción, usa variables de entorno:
+Las credenciales NO están en `docker-compose.yml`: las toma de un archivo `.env` en la raíz
+del repositorio (no versionado). Créalo desde la plantilla y rellena los valores:
 
 ```bash
-export DB_PASSWORD=tu_contraseña_segura
-export JWT_KEY=tu_clave_jwt_segura
-docker-compose up -d
+cp .env.example .env
+docker compose up --build -d
 ```
 
-O crea un archivo `.env`:
-```
-POSTGRES_PASSWORD=tu_contraseña_segura
-JWT_KEY=tu_clave_jwt_segura
-```
+Obligatorias: `POSTGRES_PASSWORD`, `Jwt__Key` y `NaturalJwt__Key` (ver README).
 
 ---
 

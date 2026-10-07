@@ -12,4 +12,6 @@ public class UnitOfWork : IUnitOfWork
 
     public Task<int> GuardarCambiosAsync(CancellationToken cancellationToken = default)
         => _db.SaveChangesAsync(cancellationToken);
+
+    public void DescartarCambios() => _db.ChangeTracker.Clear();
 }

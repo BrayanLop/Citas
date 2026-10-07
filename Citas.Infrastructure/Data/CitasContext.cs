@@ -37,10 +37,12 @@ public class CitasContext : DbContext
 
         // Tablas, claves y columnas viven como anotaciones en los *DbModel.
         // Aquí queda lo que las anotaciones no expresan bien: relaciones, precisión,
-        // defaults, el seed y la configuración común de multitenancy.
+        // defaults, índices únicos y la configuración común de multitenancy.
+        // No hay seed de empresas: cada empresa se crea al "activar agenda" desde Natural.
 
-        modelBuilder.Entity<EmpresaDbModel>()
-            .HasData(new EmpresaDbModel { Id = "DEFAULT", Nombre = "Empresa por defecto", Activo = true });
+        modelBuilder.Entity<PersonaDbModel>()
+            .HasIndex(e => e.Email)
+            .IsUnique();
 
         modelBuilder.Entity<UsuarioDbModel>(entity =>
         {
@@ -48,6 +50,16 @@ public class CitasContext : DbContext
             entity.HasOne(e => e.Persona)
                 .WithMany(p => p.Usuarios)
                 .HasForeignKey(e => e.PersonaId);
+
+            // Un cliente (Persona) tiene un único Usuario por empresa...
+            entity.HasIndex(e => new { e.TenantId, e.PersonaId })
+                .IsUnique()
+                .HasFilter("\"PersonaId\" IS NOT NULL");
+
+            // ...y una persona de Natural (personal) también: es la clave de vinculación.
+            entity.HasIndex(e => new { e.TenantId, e.PersonaNaturalId })
+                .IsUnique()
+                .HasFilter("\"PersonaNaturalId\" IS NOT NULL");
         });
 
         modelBuilder.Entity<RolUsuarioDbModel>(entity =>

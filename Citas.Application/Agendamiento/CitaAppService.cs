@@ -1,18 +1,32 @@
+using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Common;
+using Citas.Domain.Acceso;
 using Citas.Domain.Agendamiento;
 using Citas.Domain.Common;
 using Citas.Models;
 
 namespace Citas.Application.Agendamiento;
 
+// Qué puede hacer cada quien con una cita (además de la política del endpoint):
+//  - Cliente: solo sus citas (IdCliente = su usuario); crea para sí mismo y solo puede cancelar.
+//  - Personal administrativo ('01'/'03'): todas las citas del tenant.
+//  - Trabajador ('02'): ve la agenda del tenant y cambia el estado solo de las citas que atiende.
 public class CitaAppService : ICitaAppService
 {
     private readonly ICitaRepository _citas;
+    private readonly IUsuarioRepository _usuarios;
+    private readonly IUsuarioActual _actual;
     private readonly IUnitOfWork _uow;
 
-    public CitaAppService(ICitaRepository citas, IUnitOfWork uow)
+    public CitaAppService(
+        ICitaRepository citas,
+        IUsuarioRepository usuarios,
+        IUsuarioActual actual,
+        IUnitOfWork uow)
     {
         _citas = citas;
+        _usuarios = usuarios;
+        _actual = actual;
         _uow = uow;
     }
 
@@ -21,18 +35,34 @@ public class CitaAppService : ICitaAppService
         int? empleadoId = null,
         CancellationToken cancellationToken = default)
     {
+        // El cliente solo ve sus citas, pida lo que pida en el filtro.
+        if (_actual.EsCliente)
+            clienteId = UsuarioActualId();
+
         var citas = await _citas.ListarAsync(clienteId, empleadoId, cancellationToken);
         return citas.Select(MapToDto).ToList();
     }
 
     public async Task<CitaResponseDto> AgendarAsync(CreateCitaDto dto, CancellationToken cancellationToken = default)
     {
-        if (!await _citas.ExisteUsuarioAsync(dto.IdCliente, cancellationToken) ||
-            !await _citas.ExisteUsuarioAsync(dto.IdEmpleado, cancellationToken))
-            throw new DomainException("Cliente o Empleado no encontrado.");
+        var idCliente = dto.IdCliente;
+        if (_actual.EsCliente)
+        {
+            var propio = UsuarioActualId();
+            if (idCliente != 0 && idCliente != propio)
+                throw new ForbiddenAppException("Solo puedes agendar citas para ti.");
+            idCliente = propio;
+        }
+
+        if (!await _citas.ExisteUsuarioAsync(idCliente, cancellationToken))
+            throw new DomainException("Cliente no encontrado.");
+
+        var empleado = await _usuarios.ObtenerPorIdAsync(dto.IdEmpleado, cancellationToken);
+        if (empleado is null || !empleado.EsPersonalNatural || !empleado.EstaActivo)
+            throw new DomainException("Empleado no encontrado o inactivo.");
 
         var cita = Cita.Programar(
-            dto.IdCliente,
+            idCliente,
             dto.IdEmpleado,
             dto.FechaCita,
             dto.HoraEstimadaCita,
@@ -73,6 +103,18 @@ public class CitaAppService : ICitaAppService
         if (cita is null)
             return false;
 
+        if (_actual.EsCliente)
+        {
+            if (cita.IdCliente != UsuarioActualId())
+                throw new ForbiddenAppException("La cita no es tuya.");
+            if (dto.Estado is not null && dto.Estado != EstadoCita.Cancelada)
+                throw new ForbiddenAppException("Como cliente solo puedes cancelar tus citas.");
+        }
+        else if (!_actual.EsAdministrador && cita.IdEmpleado != UsuarioActualId())
+        {
+            throw new ForbiddenAppException("Solo puedes cambiar el estado de las citas que atiendes.");
+        }
+
         if (dto.Estado is not null)
             cita.CambiarEstadoA(dto.Estado);
 
@@ -91,6 +133,9 @@ public class CitaAppService : ICitaAppService
         await _uow.GuardarCambiosAsync(cancellationToken);
         return true;
     }
+
+    private int UsuarioActualId()
+        => _actual.UsuarioId ?? throw new ForbiddenAppException("El usuario no está dado de alta en esta empresa.");
 
     private static CitaResponseDto MapToDto(Cita c) => new()
     {

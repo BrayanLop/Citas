@@ -1,44 +1,40 @@
 # Configuración para Railway
 
-## 📋 Variables de entorno necesarias
+## Variables de entorno necesarias
 
-En tu dashboard de Railway, agrega estas variables:
+En el dashboard de Railway (pestaña **Variables**) define estas variables. Los valores
+reales NUNCA se escriben en el repositorio; aquí solo van los nombres.
 
 ### Base de datos
 ```
-ConnectionStrings__DefaultConnection=Host=db.khgfvmtbeqzqbsdebafq.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=e2GLOUYELM5kveUf
+ConnectionStrings__DefaultConnection=Host=<host>;Port=5432;Database=<bd>;Username=<usuario>;Password=<password>
 ```
 
-### JWT
+### JWT de clientes (emitido por Citas)
 ```
 Jwt__Issuer=CitasApi
 Jwt__Audience=CitasApiClients
-Jwt__Key=aC3xY9zK2mP5qL7wM0oR4sT6uV8xY9zK2mP5qL7wN0oR=
+Jwt__Key=<clave aleatoria de al menos 32 caracteres>
 ```
 
-### ASP.NET Core
+### JWT de Natural (personal de la empresa)
+```
+NaturalJwt__Key=<la misma clave con la que Natural firma sus tokens>
+```
+
+### ASP.NET Core / CORS
 ```
 ASPNETCORE_ENVIRONMENT=Production
+Cors__AllowedOrigins__0=https://<frontend>
 ```
 
-## 🔧 Pasos en Railway:
+La API no arranca si falta alguna variable obligatoria (indica cuál en el error).
+Ver también `.env.example` y el `README.md`.
 
-1. Ve a tu proyecto en Railway
-2. Selecciona la pestaña **Variables**
-3. Haz clic en **+ Add Variable**
-4. Copia y pega cada variable de arriba
-5. Haz clic en **Deploy**
+## Desarrollo local
 
-## ⚠️ Nota sobre credenciales
-
-En producción, usa variables de entorno seguras. NUNCA commits credenciales a Git.
-
-Para local development, usa:
 ```sh
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "..."
-dotnet user-secrets set "Jwt:Key" "..."
+dotnet user-secrets --project Citas set "ConnectionStrings:DefaultConnection" "..."
+dotnet user-secrets --project Citas set "Jwt:Key" "..."
+dotnet user-secrets --project Citas set "NaturalJwt:Key" "..."
 ```
-
-## 🚀 Después de configurar:
-
-Railway automáticamente detectará `.NET` y compilará el proyecto.

@@ -1,3 +1,4 @@
+using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Common;
 using Citas.Domain.Acceso;
 using Citas.Models;
@@ -7,17 +8,24 @@ namespace Citas.Application.Acceso;
 public class UsuarioAppService : IUsuarioAppService
 {
     private readonly IUsuarioRepository _usuarios;
+    private readonly IUsuarioActual _actual;
     private readonly IUnitOfWork _uow;
 
-    public UsuarioAppService(IUsuarioRepository usuarios, IUnitOfWork uow)
+    public UsuarioAppService(IUsuarioRepository usuarios, IUsuarioActual actual, IUnitOfWork uow)
     {
         _usuarios = usuarios;
+        _actual = actual;
         _uow = uow;
     }
 
     public async Task<IReadOnlyList<UsuarioResponseDto>> ListarAsync(string? rol = null, CancellationToken cancellationToken = default)
     {
-        var usuarios = await _usuarios.ListarConRolesAsync(cancellationToken);
+        IEnumerable<Usuario> usuarios = await _usuarios.ListarConRolesAsync(cancellationToken);
+
+        // El cliente solo ve a los empleados activos (para elegir con quién agendar).
+        if (_actual.EsCliente)
+            usuarios = usuarios.Where(u => u.EsPersonalNatural && u.EstaActivo);
+
         var response = usuarios.Select(MapToDto);
 
         if (!string.IsNullOrWhiteSpace(rol))
@@ -51,6 +59,7 @@ public class UsuarioAppService : IUsuarioAppService
         Id = u.Id,
         NombreUsuario = u.NombreUsuario,
         PersonaId = u.PersonaId,
+        PersonaNaturalId = u.PersonaNaturalId,
         Rol = u.RolUsuarios.Select(ru => ru.Rol?.NombreRol).FirstOrDefault(),
     };
 }

@@ -1,26 +1,27 @@
-using System.Security.Claims;
 using Citas.Application.Acceso;
+using Citas.Application.Acceso.Abstractions;
+using Citas.Autorizacion;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Citas.Controllers;
 
+/// <summary>
+/// Autenticación de clientes externos (cuenta propia de Citas). El personal de la
+/// empresa NO pasa por aquí: llama a Citas directamente con su token de Natural.
+/// </summary>
 [ApiController]
 [Route("[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthAppService _auth;
+    private readonly IUsuarioActual _actual;
 
-    public AuthController(IAuthAppService auth) => _auth = auth;
-
-    /// <summary>
-    /// Emite un JWT con el claim 'tenant' para la empresa indicada.
-    /// Usado por el puente de empleado (Natural -> Citas). NO valida credenciales.
-    /// </summary>
-    [AllowAnonymous]
-    [HttpPost("token")]
-    public async Task<ActionResult<TokenResponseDto>> GenerarToken([FromBody] TokenRequestDto dto)
-        => Ok(await _auth.GenerarTokenAsync(dto));
+    public AuthController(IAuthAppService auth, IUsuarioActual actual)
+    {
+        _auth = auth;
+        _actual = actual;
+    }
 
     /// <summary>Registro de un cliente externo. Crea una Persona global con contraseña (PBKDF2).</summary>
     [AllowAnonymous]
@@ -35,26 +36,11 @@ public class AuthController : ControllerBase
         => Ok(await _auth.LoginAsync(dto));
 
     /// <summary>
-    /// Tras elegir empresa, asegura un Usuario(cliente) en ese tenant ligado a la Persona global
-    /// y emite un token con el claim 'tenant' para operar en esa empresa.
+    /// Tras elegir empresa (debe existir y estar activa), asegura el Usuario del cliente
+    /// en ese tenant y emite un token de cliente con el claim 'tenant'.
     /// </summary>
-    [Authorize]
+    [Authorize(Policy = Politicas.ClienteGlobal)]
     [HttpPost("select-empresa")]
     public async Task<ActionResult<SelectEmpresaResponseDto>> SelectEmpresa([FromBody] SelectEmpresaDto dto)
-    {
-        if (!int.TryParse(User.FindFirstValue("personaId"), out var personaId))
-            return Unauthorized("Token sin personaId");
-
-        return Ok(await _auth.SelectEmpresaAsync(personaId, dto));
-    }
-
-    /// <summary>
-    /// Puente Natural -> Citas: un empleado autenticado en Natural entra a una empresa/tenant.
-    /// Si hay clave compartida (NaturalJwt:Key) se valida el token de Natural. Asegura el
-    /// Usuario(empleado) en el tenant y emite un token de Citas en modo empresa.
-    /// </summary>
-    [AllowAnonymous]
-    [HttpPost("token-empleado")]
-    public async Task<ActionResult<SelectEmpresaResponseDto>> TokenEmpleado([FromBody] EmpleadoTokenRequestDto dto)
-        => Ok(await _auth.TokenEmpleadoAsync(dto));
+        => Ok(await _auth.SelectEmpresaAsync(_actual.PersonaId!.Value, dto));
 }

@@ -3,43 +3,41 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Citas.Infrastructure.Persistencia.Modelos;
 
-// Identidad global del cliente. La tabla "Personas" se creó a mano con las columnas
-// en minúscula, por eso cada propiedad lleva su [Column] explícito. No es un tenant.
+// Identidad global del cliente externo (login propio de Citas). No es un tenant.
+// La tabla la crea la migración InitialCreate como el resto; el email es único
+// (índice configurado en el DbContext).
 [Table("Personas")]
 public class PersonaDbModel
 {
     [Key]
-    [Column("id")]
     public int Id { get; set; }
 
     [Required]
-    [Column("nombre")]
+    [MaxLength(100)]
     public string Nombre { get; set; } = string.Empty;
 
     [Required]
-    [Column("apellido")]
+    [MaxLength(100)]
     public string Apellido { get; set; } = string.Empty;
 
-    [Column("cedula")]
+    [MaxLength(30)]
     public string? Cedula { get; set; }
 
-    [Column("residencia")]
+    [MaxLength(200)]
     public string? Residencia { get; set; }
 
-    [Column("email")]
+    [MaxLength(200)]
     public string? Email { get; set; }
 
-    [Column("edad")]
     public int? Edad { get; set; }
 
-    [Column("celular")]
+    [MaxLength(30)]
     public string? Celular { get; set; }
 
-    [Column("fechanacimiento")]
     public DateTime? FechaNacimiento { get; set; }
 
-    // El hash sí quedó con C mayúscula en la columna real.
-    [Column("ClaveHash")]
+    // Hash PBKDF2 de la contraseña del login global.
+    [MaxLength(200)]
     public string? ClaveHash { get; set; }
 
     public ICollection<UsuarioDbModel> Usuarios { get; set; } = [];

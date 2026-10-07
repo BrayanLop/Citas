@@ -47,9 +47,13 @@ public static class DependencyInjection
         // Diagnóstico (health check).
         services.AddScoped<IHealthAppService, HealthAppService>();
 
-        // Multitenancy: el tenant se resuelve desde el claim 'tenant' del JWT.
+        // Multitenancy: el tenant se resuelve desde el claim 'tenant' del JWT (el de
+        // Natural se normaliza a ese claim al validarse; ver Program.cs).
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantProvider, JwtTenantProvider>();
+
+        // Usuario de la petición (modo personal/cliente, rol de Natural, usuario de Citas).
+        services.AddScoped<IUsuarioActual, UsuarioActual>();
 
         return services;
     }

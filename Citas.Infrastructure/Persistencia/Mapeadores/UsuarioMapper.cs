@@ -12,6 +12,7 @@ internal static class UsuarioMapper
             db.ClaveHash,
             db.Estado,
             db.PersonaId,
+            db.PersonaNaturalId,
             // Los roles solo vienen cuando el repositorio hizo el Include correspondiente.
             db.RolUsuarios.Count == 0 ? null : db.RolUsuarios.Select(RolUsuarioMapper.ToDomain));
 
@@ -23,6 +24,7 @@ internal static class UsuarioMapper
             ClaveHash = u.ClaveHash,
             Estado = u.Estado,
             PersonaId = u.PersonaId,
+            PersonaNaturalId = u.PersonaNaturalId,
             TenantId = tenant ?? string.Empty,
         };
 }

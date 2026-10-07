@@ -3,8 +3,8 @@ using Citas.Domain.Common;
 namespace Citas.Models;
 
 // Identidad global del cliente (la misma persona puede entrar a varias empresas).
-// No pertenece a ningún tenant. La tabla se creó a mano con columnas en minúscula;
-// ese detalle vive en el modelo de persistencia, no aquí.
+// No pertenece a ningún tenant. Solo la usan los clientes externos (el personal entra
+// con su token de Natural y no tiene Persona en Citas).
 public class Persona
 {
     private Persona() { }

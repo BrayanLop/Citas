@@ -29,7 +29,7 @@ internal sealed class BearerSecuritySchemeTransformer(IAuthenticationSchemeProvi
                 Scheme = "bearer",
                 In = ParameterLocation.Header,
                 BearerFormat = "JWT",
-                Description = "Pega el token JWT obtenido en POST /Auth/token (sin escribir 'Bearer ')."
+                Description = "Pega el token JWT de Natural (personal) o el de POST /Auth/select-empresa (cliente), sin escribir 'Bearer '."
             }
         };
 

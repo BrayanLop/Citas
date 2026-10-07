@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioAppService, UsuarioAppService>();
         services.AddScoped<IRolAppService, RolAppService>();
         services.AddScoped<IAuthAppService, AuthAppService>();
+        services.AddScoped<IPersonalAppService, PersonalAppService>();
         return services;
     }
 }

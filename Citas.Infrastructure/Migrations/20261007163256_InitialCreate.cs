@@ -29,21 +29,21 @@ namespace Citas.Infrastructure.Migrations
                 name: "Personas",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    nombre = table.Column<string>(type: "text", nullable: false),
-                    apellido = table.Column<string>(type: "text", nullable: false),
-                    cedula = table.Column<string>(type: "text", nullable: true),
-                    residencia = table.Column<string>(type: "text", nullable: true),
-                    email = table.Column<string>(type: "text", nullable: true),
-                    edad = table.Column<int>(type: "integer", nullable: true),
-                    celular = table.Column<string>(type: "text", nullable: true),
-                    fechanacimiento = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    ClaveHash = table.Column<string>(type: "text", nullable: true)
+                    Nombre = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Apellido = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Cedula = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
+                    Residencia = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    Email = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    Edad = table.Column<int>(type: "integer", nullable: true),
+                    Celular = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
+                    FechaNacimiento = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ClaveHash = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Personas", x => x.id);
+                    table.PrimaryKey("PK_Personas", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -86,7 +86,8 @@ namespace Citas.Infrastructure.Migrations
                     TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     ClaveHash = table.Column<string>(type: "text", nullable: true),
                     Estado = table.Column<bool>(type: "boolean", nullable: true, defaultValue: true),
-                    PersonaId = table.Column<int>(type: "integer", nullable: true)
+                    PersonaId = table.Column<int>(type: "integer", nullable: true),
+                    PersonaNaturalId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -95,7 +96,7 @@ namespace Citas.Infrastructure.Migrations
                         name: "FK_Usuarios_Personas_PersonaId",
                         column: x => x.PersonaId,
                         principalTable: "Personas",
-                        principalColumn: "id");
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -210,11 +211,6 @@ namespace Citas.Infrastructure.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.InsertData(
-                table: "Empresas",
-                columns: new[] { "Id", "Activo", "Nombre" },
-                values: new object[] { "DEFAULT", true, "Empresa por defecto" });
-
             migrationBuilder.CreateIndex(
                 name: "IX_AgendaEmpleados_IdUsuario",
                 table: "AgendaEmpleados",
@@ -256,6 +252,12 @@ namespace Citas.Infrastructure.Migrations
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Personas_Email",
+                table: "Personas",
+                column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Roles_TenantId",
                 table: "Roles",
                 column: "TenantId");
@@ -289,6 +291,20 @@ namespace Citas.Infrastructure.Migrations
                 name: "IX_Usuarios_TenantId",
                 table: "Usuarios",
                 column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Usuarios_TenantId_PersonaId",
+                table: "Usuarios",
+                columns: new[] { "TenantId", "PersonaId" },
+                unique: true,
+                filter: "\"PersonaId\" IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Usuarios_TenantId_PersonaNaturalId",
+                table: "Usuarios",
+                columns: new[] { "TenantId", "PersonaNaturalId" },
+                unique: true,
+                filter: "\"PersonaNaturalId\" IS NOT NULL");
         }
 
         /// <inheritdoc />

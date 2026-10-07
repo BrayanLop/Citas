@@ -7,4 +7,10 @@ namespace Citas.Application.Common;
 public interface IUnitOfWork
 {
     Task<int> GuardarCambiosAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Descarta los cambios pendientes (p. ej. tras un fallo al guardar por una carrera
+    /// con otra petición), para que el siguiente guardado no los reintente.
+    /// </summary>
+    void DescartarCambios();
 }

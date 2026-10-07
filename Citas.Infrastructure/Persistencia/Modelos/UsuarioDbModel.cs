@@ -24,6 +24,9 @@ public class UsuarioDbModel : ITenantDbModel
 
     public int? PersonaId { get; set; }
 
+    // Persona de Natural a la que representa (solo personal). Único por tenant.
+    public int? PersonaNaturalId { get; set; }
+
     public PersonaDbModel? Persona { get; set; }
     public ICollection<RolUsuarioDbModel> RolUsuarios { get; set; } = [];
     public ICollection<CitaDbModel> CitasCliente { get; set; } = [];

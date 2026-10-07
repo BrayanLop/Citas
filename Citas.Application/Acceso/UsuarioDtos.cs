@@ -10,6 +10,8 @@ public class UsuarioResponseDto
     public int Id { get; set; }
     public string NombreUsuario { get; set; } = string.Empty;
     public int? PersonaId { get; set; }
+    /// <summary>Id de la persona en Natural cuando el usuario es personal de la empresa.</summary>
+    public int? PersonaNaturalId { get; set; }
     /// <summary>Nombre del rol principal del usuario (ej: "Cliente", "Empleado").</summary>
     public string? Rol { get; set; }
 }

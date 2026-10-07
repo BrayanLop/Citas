@@ -12,9 +12,10 @@ public class EmpresaRepository : IEmpresaRepository
 
     public EmpresaRepository(CitasContext db) => _db = db;
 
-    public async Task<IReadOnlyList<Empresa>> ListarAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Empresa>> ListarActivasAsync(CancellationToken cancellationToken = default)
     {
         var filas = await _db.Empresas.AsNoTracking()
+            .Where(e => e.Activo)
             .OrderBy(e => e.Nombre)
             .ToListAsync(cancellationToken);
         return filas.Select(EmpresaMapper.ToDomain).ToList();
@@ -26,9 +27,8 @@ public class EmpresaRepository : IEmpresaRepository
         return fila is null ? null : EmpresaMapper.ToDomain(fila);
     }
 
-    public Task<bool> ExisteAsync(string id, CancellationToken cancellationToken = default)
-        => _db.Empresas.AsNoTracking().AnyAsync(e => e.Id == id, cancellationToken);
-
     public async Task AgregarAsync(Empresa empresa, CancellationToken cancellationToken = default)
         => await _db.Empresas.AddAsync(EmpresaMapper.ToDbModel(empresa), cancellationToken);
+
+    public void Actualizar(Empresa empresa) => _db.Empresas.Update(EmpresaMapper.ToDbModel(empresa));
 }

@@ -1,20 +1,5 @@
 namespace Citas.Application.Acceso;
 
-public class TokenRequestDto
-{
-    /// <summary>Código de la empresa/tenant para la que se emite el token.</summary>
-    public string Tenant { get; set; } = string.Empty;
-    /// <summary>Nombre de usuario (informativo para el token).</summary>
-    public string Usuario { get; set; } = string.Empty;
-}
-
-public class TokenResponseDto
-{
-    public string Token { get; set; } = string.Empty;
-    public string Tenant { get; set; } = string.Empty;
-    public DateTime ExpiraUtc { get; set; }
-}
-
 /// <summary>Registro de un cliente externo (identidad global en Persona).</summary>
 public class RegisterClienteDto
 {
@@ -43,15 +28,6 @@ public class ClienteAuthResponseDto
 public class SelectEmpresaDto
 {
     public string Tenant { get; set; } = string.Empty;
-}
-
-/// <summary>Puente para que un empleado de Natural entre a Citas en una empresa/tenant.</summary>
-public class EmpleadoTokenRequestDto
-{
-    public string Tenant { get; set; } = string.Empty;
-    public string Nombre { get; set; } = string.Empty;
-    /// <summary>JWT de Natural (se valida si hay clave compartida configurada).</summary>
-    public string? NaturalToken { get; set; }
 }
 
 /// <summary>Token con tenant tras elegir empresa; incluye el userId del cliente en ese tenant.</summary>

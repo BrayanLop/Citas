@@ -48,11 +48,10 @@ public class UsuarioRepository : IUsuarioRepository
         return fila is null ? null : UsuarioMapper.ToDomain(fila);
     }
 
-    public async Task<Usuario?> BuscarEnTenantPorNombreAsync(string tenant, string nombre, CancellationToken cancellationToken = default)
+    public async Task<Usuario?> BuscarEnTenantPorPersonaNaturalAsync(string tenant, int personaNaturalId, CancellationToken cancellationToken = default)
     {
-        var nombreLower = nombre.ToLower();
         var fila = await _db.Usuarios.IgnoreQueryFilters().AsNoTracking()
-            .FirstOrDefaultAsync(u => u.TenantId == tenant && u.NombreUsuario.ToLower() == nombreLower, cancellationToken);
+            .FirstOrDefaultAsync(u => u.TenantId == tenant && u.PersonaNaturalId == personaNaturalId, cancellationToken);
         return fila is null ? null : UsuarioMapper.ToDomain(fila);
     }
 }

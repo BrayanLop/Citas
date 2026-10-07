@@ -26,8 +26,8 @@ public interface IUsuarioRepository
     Task<Usuario?> BuscarEnTenantPorPersonaAsync(int personaId, string tenant, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Busca un usuario por nombre dentro de un tenant concreto, ignorando el filtro
-    /// global de tenant (puente de empleado Natural → Citas).
+    /// Busca el usuario que representa a una persona de Natural (personal) en un tenant
+    /// concreto. La vinculación es siempre por el id de Natural, nunca por nombre.
     /// </summary>
-    Task<Usuario?> BuscarEnTenantPorNombreAsync(string tenant, string nombre, CancellationToken cancellationToken = default);
+    Task<Usuario?> BuscarEnTenantPorPersonaNaturalAsync(string tenant, int personaNaturalId, CancellationToken cancellationToken = default);
 }

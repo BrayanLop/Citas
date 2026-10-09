@@ -2,7 +2,6 @@ using Citas.Data;
 using Citas.Domain.Servicios;
 using Citas.Infrastructure.Persistencia;
 using Citas.Infrastructure.Persistencia.Mapeadores;
-using Citas.Infrastructure.Persistencia.Modelos;
 using Citas.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +32,16 @@ public class ServicioRepository : IServicioRepository
         return fila is null ? null : ServicioMapper.ToDomain(fila);
     }
 
+    public async Task<IReadOnlyList<Servicio>> ObtenerPorIdsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        var filas = await _db.Servicios
+            .AsNoTracking()
+            .Where(s => ids.Contains(s.IdServicio))
+            .ToListAsync(cancellationToken);
+
+        return filas.Select(ServicioMapper.ToDomain).ToList();
+    }
+
     public async Task AgregarAsync(Servicio servicio, CancellationToken cancellationToken = default)
     {
         var fila = ServicioMapper.ToDbModel(servicio);
@@ -41,7 +50,4 @@ public class ServicioRepository : IServicioRepository
     }
 
     public void Actualizar(Servicio servicio) => _db.Servicios.Update(ServicioMapper.ToDbModel(servicio));
-
-    public void Eliminar(Servicio servicio)
-        => _db.Servicios.Remove(new ServicioDbModel { IdServicio = servicio.IdServicio });
 }

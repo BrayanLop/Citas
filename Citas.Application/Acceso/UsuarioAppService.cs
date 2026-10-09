@@ -26,7 +26,7 @@ public class UsuarioAppService : IUsuarioAppService
         if (_actual.EsCliente)
             usuarios = usuarios.Where(u => u.EsPersonalNatural && u.EstaActivo);
 
-        var response = usuarios.Select(MapToDto);
+        var response = usuarios.Select(u => MapToDto(u, incluirContacto: !_actual.EsCliente));
 
         if (!string.IsNullOrWhiteSpace(rol))
             response = response.Where(u => string.Equals(u.Rol, rol, StringComparison.OrdinalIgnoreCase));
@@ -40,7 +40,7 @@ public class UsuarioAppService : IUsuarioAppService
         // tenant = null: el contexto lo toma del tenant actual del token.
         await _usuarios.AgregarAsync(usuario, null, cancellationToken);
         await _uow.GuardarCambiosAsync(cancellationToken);
-        return MapToDto(usuario);
+        return MapToDto(usuario, incluirContacto: true);
     }
 
     public async Task<bool> EliminarAsync(int id, CancellationToken cancellationToken = default)
@@ -54,12 +54,15 @@ public class UsuarioAppService : IUsuarioAppService
         return true;
     }
 
-    private static UsuarioResponseDto MapToDto(Usuario u) => new()
+    private static UsuarioResponseDto MapToDto(Usuario u, bool incluirContacto) => new()
     {
         Id = u.Id,
         NombreUsuario = u.NombreUsuario,
         PersonaId = u.PersonaId,
         PersonaNaturalId = u.PersonaNaturalId,
         Rol = u.RolUsuarios.Select(ru => ru.Rol?.NombreRol).FirstOrDefault(),
+        Activo = u.EstaActivo,
+        Email = incluirContacto ? u.Email : null,
+        Celular = incluirContacto ? u.Celular : null,
     };
 }

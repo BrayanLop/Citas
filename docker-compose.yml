@@ -43,6 +43,9 @@ services:
       NaturalJwt__Key: ${NaturalJwt__Key:?Define NaturalJwt__Key en .env (misma clave JWT de Natural)}
       NaturalJwt__Issuer: ${NaturalJwt__Issuer:-Natural.Api}
       NaturalJwt__Audience: ${NaturalJwt__Audience:-Natural.Client}
+      NaturalApi__BaseUrl: ${NaturalApi__BaseUrl:?Define NaturalApi__BaseUrl en .env (URL de la API de Natural)}
+      NaturalApi__TimeoutSegundos: ${NaturalApi__TimeoutSegundos:-15}
+      NaturalApi__TiempoEstimadoPorDefecto: ${NaturalApi__TiempoEstimadoPorDefecto:-30}
       Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0:-}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: "http://+:8080"

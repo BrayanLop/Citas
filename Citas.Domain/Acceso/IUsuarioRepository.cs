@@ -19,6 +19,12 @@ public interface IUsuarioRepository
 
     void Eliminar(Usuario usuario);
 
+    /// <summary>Persiste los cambios de un usuario ya existente.</summary>
+    void Actualizar(Usuario usuario);
+
+    /// <summary>Personal de Natural del tenant actual (activo o no).</summary>
+    Task<IReadOnlyList<Usuario>> ListarPersonalNaturalAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Busca el usuario de una persona en un tenant concreto, ignorando el filtro
     /// global de tenant (se usa en el flujo de login → elegir empresa).

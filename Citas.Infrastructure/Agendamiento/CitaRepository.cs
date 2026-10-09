@@ -26,6 +26,8 @@ public class CitaRepository : ICitaRepository
             .AsNoTracking()
             .Include(c => c.Cliente)
             .Include(c => c.Empleado)
+            .Include(c => c.DetalleCitas)
+                .ThenInclude(d => d.Servicio)
             .AsQueryable();
 
         if (clienteId.HasValue)
@@ -47,6 +49,8 @@ public class CitaRepository : ICitaRepository
             .AsNoTracking()
             .Include(c => c.Cliente)
             .Include(c => c.Empleado)
+            .Include(c => c.DetalleCitas)
+                .ThenInclude(d => d.Servicio)
             .FirstOrDefaultAsync(c => c.IdCita == idCita, cancellationToken);
 
         return fila is null ? null : CitaMapper.ToDomain(fila);
@@ -57,7 +61,7 @@ public class CitaRepository : ICitaRepository
 
     public async Task AgregarAsync(Cita cita, CancellationToken cancellationToken = default)
     {
-        var fila = CitaMapper.ToDbModel(cita);
+        var fila = CitaMapper.ToDbModel(cita, incluirDetalles: true);
         await _db.Citas.AddAsync(fila, cancellationToken);
         _db.SincronizarIdTrasGuardar(() => cita.EstablecerIdentidad(fila.IdCita));
     }

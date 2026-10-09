@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!-- EF Core se mantiene porque algunos controladores aún consultan el DbContext
          directamente (estilo previo a DDD). El proveedor (Npgsql) y las Tools viven
          ahora en Citas.Infrastructure. -->

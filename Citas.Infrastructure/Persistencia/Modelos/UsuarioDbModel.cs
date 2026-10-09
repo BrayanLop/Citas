@@ -27,6 +27,13 @@ public class UsuarioDbModel : ITenantDbModel
     // Persona de Natural a la que representa (solo personal). Único por tenant.
     public int? PersonaNaturalId { get; set; }
 
+    // Contacto del personal, copiado de Natural al sincronizar.
+    [MaxLength(150)]
+    public string? Email { get; set; }
+
+    [MaxLength(30)]
+    public string? Celular { get; set; }
+
     public PersonaDbModel? Persona { get; set; }
     public ICollection<RolUsuarioDbModel> RolUsuarios { get; set; } = [];
     public ICollection<CitaDbModel> CitasCliente { get; set; } = [];

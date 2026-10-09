@@ -17,9 +17,10 @@ Jwt__Audience=CitasApiClients
 Jwt__Key=<clave aleatoria de al menos 32 caracteres>
 ```
 
-### JWT de Natural (personal de la empresa)
+### Natural (JWT del personal y API para sincronizar)
 ```
 NaturalJwt__Key=<la misma clave con la que Natural firma sus tokens>
+NaturalApi__BaseUrl=https://naturalback.vip/v2/api
 ```
 
 ### ASP.NET Core / CORS

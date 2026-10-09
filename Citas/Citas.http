@@ -1,6 +1,119 @@
+### Ejemplos de la API de Citas (extensión REST Client / Visual Studio).
+### Rellena las variables con tus valores. NUNCA guardes tokens reales en este archivo.
+###  - tokenNatural: JWT de Natural del personal (se copia tras iniciar sesión en Natural).
+###  - tokenCliente: token de cliente que devuelve POST /Auth/select-empresa.
+
 @Citas_HostAddress = http://localhost:5202
+@tokenNatural = PEGA_AQUI_UN_TOKEN_DE_NATURAL
+@tokenLogin = PEGA_AQUI_EL_TOKEN_DE_POST_AUTH_LOGIN
+@tokenCliente = PEGA_AQUI_EL_TOKEN_DE_CLIENTE
+@empresaId = 1
 
-GET {{Citas_HostAddress}}/weatherforecast/
-Accept: application/json
+### Salud
+GET {{Citas_HostAddress}}/health
 
-###
+### Empresas con agenda activa (anónimo)
+GET {{Citas_HostAddress}}/Empresas
+
+### --- Personal (token de Natural) -------------------------------------------
+
+### 1) Activar la agenda de la empresa del token (rol 01/03)
+POST {{Citas_HostAddress}}/Empresas
+Authorization: Bearer {{tokenNatural}}
+Content-Type: application/json
+
+{
+  "nombre": "Mi empresa"
+}
+
+### 2) Sincronizar servicios y personal con Natural (rol 01/03)
+POST {{Citas_HostAddress}}/Sincronizacion/Natural
+Authorization: Bearer {{tokenNatural}}
+
+### 3) Ver el catálogo (el personal ve también los no agendables)
+GET {{Citas_HostAddress}}/Servicios
+Authorization: Bearer {{tokenNatural}}
+
+### 4) Ajustar duración y disponibilidad de un servicio (rol 01/03)
+PUT {{Citas_HostAddress}}/Servicios/1
+Authorization: Bearer {{tokenNatural}}
+Content-Type: application/json
+
+{
+  "tiempoEstimado": 45,
+  "activo": true
+}
+
+### Personal y clientes del tenant
+GET {{Citas_HostAddress}}/Usuarios
+Authorization: Bearer {{tokenNatural}}
+
+### Agenda del tenant
+GET {{Citas_HostAddress}}/Citas
+Authorization: Bearer {{tokenNatural}}
+
+### --- Cliente (token de Citas) ----------------------------------------------
+
+### Registro
+POST {{Citas_HostAddress}}/Auth/register
+Content-Type: application/json
+
+{
+  "nombre": "Ana",
+  "apellido": "Pérez",
+  "email": "ana@example.com",
+  "celular": "3000000000",
+  "password": "CAMBIA_ESTA_CLAVE"
+}
+
+### Login
+POST {{Citas_HostAddress}}/Auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "CAMBIA_ESTA_CLAVE"
+}
+
+### Elegir empresa (con el token del login) -> token de cliente
+POST {{Citas_HostAddress}}/Auth/select-empresa
+Authorization: Bearer {{tokenLogin}}
+Content-Type: application/json
+
+{
+  "tenant": "{{empresaId}}"
+}
+
+### Servicios agendables
+GET {{Citas_HostAddress}}/Servicios
+Authorization: Bearer {{tokenCliente}}
+
+### Empleados activos
+GET {{Citas_HostAddress}}/Usuarios
+Authorization: Bearer {{tokenCliente}}
+
+### Agendar (la hora de fin = inicio + suma de las duraciones de los servicios)
+POST {{Citas_HostAddress}}/Citas
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "idEmpleado": 2,
+  "fechaCita": "2026-10-20",
+  "horaEstimadaCita": "10:00:00",
+  "idServicios": [1, 2],
+  "observaciones": "Primera vez"
+}
+
+### Mis citas
+GET {{Citas_HostAddress}}/Citas
+Authorization: Bearer {{tokenCliente}}
+
+### Cancelar una cita propia
+PATCH {{Citas_HostAddress}}/Citas/1
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "estado": "Cancelada"
+}

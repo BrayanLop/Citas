@@ -1,5 +1,6 @@
 using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Common;
+using Citas.Application.Integracion;
 using Citas.Application.Diagnostico;
 using Citas.Data;
 using Citas.Domain.Acceso;
@@ -11,6 +12,7 @@ using Citas.Infrastructure.Agendamiento;
 using Citas.Infrastructure.Common;
 using Citas.Infrastructure.Diagnostico;
 using Citas.Infrastructure.Empresas;
+using Citas.Infrastructure.Integracion;
 using Citas.Infrastructure.Servicios;
 using Citas.Multitenancy;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +56,35 @@ public static class DependencyInjection
 
         // Usuario de la petición (modo personal/cliente, rol de Natural, usuario de Citas).
         services.AddScoped<IUsuarioActual, UsuarioActual>();
+
+        // API de Natural (catálogo de servicios y personal) para la sincronización.
+        services.AddNaturalApi(configuration);
+
+        return services;
+    }
+
+    // NaturalApi:BaseUrl (obligatoria, la valida el arranque), NaturalApi:TimeoutSegundos
+    // (por defecto 15) y NaturalApi:TiempoEstimadoPorDefecto (minutos, por defecto 30).
+    private static IServiceCollection AddNaturalApi(this IServiceCollection services, IConfiguration configuration)
+    {
+        var seccion = configuration.GetSection("NaturalApi");
+        var timeout = seccion.GetValue<int?>("TimeoutSegundos") is > 0 and var t ? t : 15;
+
+        services.AddHttpClient<INaturalCatalogo, NaturalCatalogoHttp>(client =>
+        {
+            // Con barra final para que "Servicio/Obtener" se resuelva debajo de la base (.../v2/api/).
+            var baseUrl = seccion["BaseUrl"]
+                ?? throw new InvalidOperationException("Falta NaturalApi__BaseUrl.");
+            client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(timeout);
+        });
+
+        services.AddSingleton(new OpcionesSincronizacion
+        {
+            TiempoEstimadoPorDefecto = seccion.GetValue<int?>("TiempoEstimadoPorDefecto") is > 0 and var minutos
+                ? minutos
+                : OpcionesSincronizacion.TiempoEstimadoPorDefectoInicial,
+        });
 
         return services;
     }

@@ -279,10 +279,19 @@ namespace Citas.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdServicio"));
 
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("DisponibleEnNatural")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("NombreServicio")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<int>("ServicioNaturalId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -300,6 +309,9 @@ namespace Citas.Infrastructure.Migrations
 
                     b.HasIndex("TenantId");
 
+                    b.HasIndex("TenantId", "ServicioNaturalId")
+                        .IsUnique();
+
                     b.ToTable("Servicios");
                 });
 
@@ -311,8 +323,16 @@ namespace Citas.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Celular")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("ClaveHash")
                         .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()

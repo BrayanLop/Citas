@@ -41,6 +41,16 @@ public class UsuarioRepository : IUsuarioRepository
     public void Eliminar(Usuario usuario)
         => _db.Usuarios.Remove(new UsuarioDbModel { Id = usuario.Id });
 
+    public void Actualizar(Usuario usuario) => _db.Usuarios.Update(UsuarioMapper.ToDbModel(usuario));
+
+    public async Task<IReadOnlyList<Usuario>> ListarPersonalNaturalAsync(CancellationToken cancellationToken = default)
+    {
+        var filas = await _db.Usuarios.AsNoTracking()
+            .Where(u => u.PersonaNaturalId != null)
+            .ToListAsync(cancellationToken);
+        return filas.Select(UsuarioMapper.ToDomain).ToList();
+    }
+
     public async Task<Usuario?> BuscarEnTenantPorPersonaAsync(int personaId, string tenant, CancellationToken cancellationToken = default)
     {
         var fila = await _db.Usuarios.IgnoreQueryFilters().AsNoTracking()

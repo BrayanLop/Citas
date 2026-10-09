@@ -2,6 +2,7 @@ using Citas.Application.Acceso;
 using Citas.Application.Agendamiento;
 using Citas.Application.Empresas;
 using Citas.Application.Servicios;
+using Citas.Application.Sincronizacion;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Citas.Application;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IRolAppService, RolAppService>();
         services.AddScoped<IAuthAppService, AuthAppService>();
         services.AddScoped<IPersonalAppService, PersonalAppService>();
+        services.AddScoped<ISincronizacionAppService, SincronizacionAppService>();
         return services;
     }
 }

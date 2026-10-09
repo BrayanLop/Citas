@@ -66,9 +66,12 @@ namespace Citas.Infrastructure.Migrations
                 {
                     IdServicio = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ServicioNaturalId = table.Column<int>(type: "integer", nullable: false),
                     NombreServicio = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     Valor = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     TiempoEstimado = table.Column<int>(type: "integer", nullable: false),
+                    Activo = table.Column<bool>(type: "boolean", nullable: false),
+                    DisponibleEnNatural = table.Column<bool>(type: "boolean", nullable: false),
                     TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
@@ -87,7 +90,9 @@ namespace Citas.Infrastructure.Migrations
                     ClaveHash = table.Column<string>(type: "text", nullable: true),
                     Estado = table.Column<bool>(type: "boolean", nullable: true, defaultValue: true),
                     PersonaId = table.Column<int>(type: "integer", nullable: true),
-                    PersonaNaturalId = table.Column<int>(type: "integer", nullable: true)
+                    PersonaNaturalId = table.Column<int>(type: "integer", nullable: true),
+                    Email = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: true),
+                    Celular = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -281,6 +286,12 @@ namespace Citas.Infrastructure.Migrations
                 name: "IX_Servicios_TenantId",
                 table: "Servicios",
                 column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Servicios_TenantId_ServicioNaturalId",
+                table: "Servicios",
+                columns: new[] { "TenantId", "ServicioNaturalId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Usuarios_PersonaId",

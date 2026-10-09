@@ -19,8 +19,53 @@ public class Usuario
     // administrador...). Es único por tenant y es lo único que lo vincula con Natural.
     public int? PersonaNaturalId { get; private set; }
 
+    // Contacto del personal, copiado de Natural al sincronizar (los clientes lo tienen en Persona).
+    public string? Email { get; private set; }
+    public string? Celular { get; private set; }
+
     public bool EsPersonalNatural => PersonaNaturalId.HasValue;
     public bool EstaActivo => Estado != false;
+
+    /// <summary>
+    /// Copia los datos de la persona de Natural (nombre completo y contacto) y reactiva al
+    /// usuario si estaba inactivo. Devuelve true si algo cambió.
+    /// </summary>
+    public bool SincronizarDesdeNatural(string nombreCompleto, string? email, string? celular)
+    {
+        if (!EsPersonalNatural)
+            throw new DomainException("Solo el personal de Natural se sincroniza con Natural.");
+
+        var nombre = string.IsNullOrWhiteSpace(nombreCompleto) ? NombreUsuario : nombreCompleto.Trim();
+        if (nombre.Length > LongitudMaximaNombre)
+            nombre = nombre[..LongitudMaximaNombre];
+        email = Limpiar(email, 150);
+        celular = Limpiar(celular, 30);
+
+        var cambio = nombre != NombreUsuario || email != Email || celular != Celular || !EstaActivo;
+        NombreUsuario = nombre;
+        Email = email;
+        Celular = celular;
+        Estado = true;
+        return cambio;
+    }
+
+    /// <summary>Deja al usuario inactivo (no se borra). Devuelve true si estaba activo.</summary>
+    public bool Desactivar()
+    {
+        if (!EstaActivo)
+            return false;
+        Estado = false;
+        return true;
+    }
+
+    private const int LongitudMaximaNombre = 100;
+
+    private static string? Limpiar(string? valor, int longitudMaxima)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        valor = valor.Trim();
+        return valor.Length > longitudMaxima ? valor[..longitudMaxima] : valor;
+    }
 
     // Roles del usuario; el mapper los rellena cuando se necesitan (p. ej. listado con rol).
     public ICollection<RolUsuario> RolUsuarios { get; private set; } = [];
@@ -66,6 +111,8 @@ public class Usuario
         bool? estado,
         int? personaId,
         int? personaNaturalId,
+        string? email = null,
+        string? celular = null,
         IEnumerable<RolUsuario>? roles = null)
     {
         var usuario = new Usuario
@@ -76,6 +123,8 @@ public class Usuario
             Estado = estado,
             PersonaId = personaId,
             PersonaNaturalId = personaNaturalId,
+            Email = email,
+            Celular = celular,
         };
         if (roles is not null)
             usuario.RolUsuarios = roles.ToList();

@@ -3,6 +3,7 @@ using Citas.Application.Common;
 using Citas.Domain.Acceso;
 using Citas.Domain.Agendamiento;
 using Citas.Domain.Common;
+using Citas.Domain.Servicios;
 using Citas.Models;
 
 namespace Citas.Application.Agendamiento;
@@ -15,17 +16,20 @@ public class CitaAppService : ICitaAppService
 {
     private readonly ICitaRepository _citas;
     private readonly IUsuarioRepository _usuarios;
+    private readonly IServicioRepository _servicios;
     private readonly IUsuarioActual _actual;
     private readonly IUnitOfWork _uow;
 
     public CitaAppService(
         ICitaRepository citas,
         IUsuarioRepository usuarios,
+        IServicioRepository servicios,
         IUsuarioActual actual,
         IUnitOfWork uow)
     {
         _citas = citas;
         _usuarios = usuarios;
+        _servicios = servicios;
         _actual = actual;
         _uow = uow;
     }
@@ -61,13 +65,16 @@ public class CitaAppService : ICitaAppService
         if (empleado is null || !empleado.EsPersonalNatural || !empleado.EstaActivo)
             throw new DomainException("Empleado no encontrado o inactivo.");
 
+        var servicios = await ServiciosDeLaCitaAsync(dto.IdServicios, cancellationToken);
+
         var cita = Cita.Programar(
             idCliente,
             dto.IdEmpleado,
             dto.FechaCita,
             dto.HoraEstimadaCita,
             dto.HoraEstimadaFin,
-            dto.Observaciones);
+            dto.Observaciones,
+            servicios);
 
         await _citas.AgregarAsync(cita, cancellationToken);
         await _uow.GuardarCambiosAsync(cancellationToken);
@@ -134,6 +141,26 @@ public class CitaAppService : ICitaAppService
         return true;
     }
 
+    // Servicios pedidos para la cita: deben existir en el tenant (el filtro de tenant del
+    // repositorio deja fuera los de otras empresas). Que sean agendables lo valida Cita.
+    private async Task<IReadOnlyList<Servicio>> ServiciosDeLaCitaAsync(
+        List<int>? ids,
+        CancellationToken cancellationToken)
+    {
+        if (ids is null || ids.Count == 0)
+            return [];
+        if (ids.Distinct().Count() != ids.Count)
+            throw new DomainException("La cita tiene servicios repetidos.");
+
+        var servicios = await _servicios.ObtenerPorIdsAsync(ids, cancellationToken);
+        var faltantes = ids.Except(servicios.Select(s => s.IdServicio)).ToList();
+        if (faltantes.Count > 0)
+            throw new DomainException($"Servicio no encontrado: {string.Join(", ", faltantes)}.");
+
+        // Mismo orden en que se pidieron.
+        return ids.Select(id => servicios.First(s => s.IdServicio == id)).ToList();
+    }
+
     private int UsuarioActualId()
         => _actual.UsuarioId ?? throw new ForbiddenAppException("El usuario no está dado de alta en esta empresa.");
 
@@ -149,5 +176,14 @@ public class CitaAppService : ICitaAppService
         Observaciones = c.Observaciones,
         NombreCliente = c.Cliente?.NombreUsuario,
         NombreEmpleado = c.Empleado?.NombreUsuario,
+        Servicios = c.Detalles.Select(d => new DetalleCitaDto
+        {
+            IdServicio = d.IdServicio,
+            NombreServicio = d.NombreServicio,
+            ValorServicio = d.ValorServicio,
+            TiempoEstimado = d.TiempoEstimado,
+        }).ToList(),
+        DuracionTotal = c.DuracionTotal,
+        ValorTotal = c.Detalles.Sum(d => d.ValorServicio),
     };
 }

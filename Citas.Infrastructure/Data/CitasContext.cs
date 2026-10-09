@@ -74,8 +74,12 @@ public class CitasContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<ServicioDbModel>()
-            .Property(e => e.Valor).HasPrecision(18, 2);
+        modelBuilder.Entity<ServicioDbModel>(entity =>
+        {
+            entity.Property(e => e.Valor).HasPrecision(18, 2);
+            // Un servicio de Natural aparece una sola vez por empresa: es la clave de la sincronización.
+            entity.HasIndex(e => new { e.TenantId, e.ServicioNaturalId }).IsUnique();
+        });
 
         modelBuilder.Entity<CitaDbModel>(entity =>
         {

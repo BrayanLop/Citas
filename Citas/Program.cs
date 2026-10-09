@@ -11,7 +11,7 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Falla al arrancar (con el nombre de la variable) si falta configuración obligatoria:
-// cadena de conexión, JWT de clientes de Citas y clave JWT de Natural.
+// cadena de conexión, JWT de clientes de Citas, clave JWT de Natural y URL de la API de Natural.
 ConfiguracionRequerida.Validar(builder.Configuration);
 
 builder.Services.AddControllers();

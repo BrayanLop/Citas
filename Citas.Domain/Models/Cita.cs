@@ -23,14 +23,23 @@ public class Cita
     public Usuario? Cliente { get; private set; }
     public Usuario? Empleado { get; private set; }
 
-    // Programa una cita nueva en estado Pendiente.
+    // Servicios de la cita (DetalleCita). Se fijan al programarla.
+    private List<DetalleCita> _detalles = [];
+    public IReadOnlyList<DetalleCita> Detalles => _detalles;
+
+    /// <summary>Duración total en minutos (suma de los servicios de la cita).</summary>
+    public int DuracionTotal => _detalles.Sum(d => d.TiempoEstimado);
+
+    // Programa una cita nueva en estado Pendiente. Si lleva servicios, todos deben ser
+    // agendables y la hora de fin se calcula: inicio + suma de sus TiempoEstimado.
     public static Cita Programar(
         int idCliente,
         int idEmpleado,
         DateTime fechaCita,
         TimeSpan horaInicio,
         TimeSpan? horaFin,
-        string? observaciones)
+        string? observaciones,
+        IReadOnlyCollection<Servicio>? servicios = null)
     {
         if (idCliente <= 0)
             throw new DomainException("La cita requiere un cliente válido.");
@@ -38,10 +47,28 @@ public class Cita
             throw new DomainException("La cita requiere un empleado válido.");
         if (idCliente == idEmpleado)
             throw new DomainException("El cliente y el empleado no pueden ser la misma persona.");
+
+        var detalles = new List<DetalleCita>();
+        foreach (var servicio in servicios ?? [])
+        {
+            if (!servicio.EsAgendable)
+                throw new DomainException($"El servicio '{servicio.NombreServicio}' no está disponible para agendar.");
+            if (detalles.Any(d => d.IdServicio == servicio.IdServicio))
+                throw new DomainException($"El servicio '{servicio.NombreServicio}' está repetido en la cita.");
+            detalles.Add(DetalleCita.DeServicio(servicio));
+        }
+
+        if (detalles.Count > 0)
+        {
+            horaFin = horaInicio + TimeSpan.FromMinutes(detalles.Sum(d => d.TiempoEstimado));
+            if (horaFin.Value >= TimeSpan.FromDays(1))
+                throw new DomainException("Con la duración de sus servicios la cita terminaría después de medianoche.");
+        }
         ValidarFranja(horaInicio, horaFin);
 
         return new Cita
         {
+            _detalles = detalles,
             IdCliente = idCliente,
             IdEmpleado = idEmpleado,
             FechaCita = fechaCita,
@@ -64,9 +91,11 @@ public class Cita
         TimeSpan? horaFin,
         string? observaciones,
         Usuario? cliente,
-        Usuario? empleado)
+        Usuario? empleado,
+        IEnumerable<DetalleCita>? detalles = null)
         => new()
         {
+            _detalles = detalles?.ToList() ?? [],
             IdCita = idCita,
             IdCliente = idCliente,
             IdEmpleado = idEmpleado,
@@ -101,6 +130,9 @@ public class Cita
     {
         if (Estado is EstadoCita.Atendida or EstadoCita.Cancelada)
             throw new DomainException($"Una cita '{Estado}' no se puede reprogramar.");
+        // Con servicios, la hora de fin la marca su duración total, no la que llegue.
+        if (_detalles.Count > 0)
+            horaFin = horaInicio + TimeSpan.FromMinutes(DuracionTotal);
         ValidarFranja(horaInicio, horaFin);
 
         FechaCita = fechaCita;

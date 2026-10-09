@@ -4,7 +4,7 @@ namespace Citas.Configuracion;
 /// Comprueba al arrancar que exista la configuración sin la cual la API no puede
 /// funcionar, y falla con un mensaje que dice exactamente qué variable falta.
 /// Los valores llegan por variables de entorno (ConnectionStrings__DefaultConnection,
-/// Jwt__Key, NaturalJwt__Key...), user-secrets o un appsettings.json local no versionado.
+/// Jwt__Key, NaturalJwt__Key, NaturalApi__BaseUrl...), user-secrets o un appsettings.json local no versionado.
 /// </summary>
 public static class ConfiguracionRequerida
 {
@@ -23,6 +23,7 @@ public static class ConfiguracionRequerida
         Requerir(config, "Jwt:Audience", "Jwt__Audience", faltantes);
         Requerir(config, "Jwt:Key", "Jwt__Key", faltantes);
         Requerir(config, "NaturalJwt:Key", "NaturalJwt__Key", faltantes);
+        Requerir(config, "NaturalApi:BaseUrl", "NaturalApi__BaseUrl", faltantes);
 
         if (faltantes.Count > 0)
             throw new InvalidOperationException(
@@ -31,6 +32,11 @@ public static class ConfiguracionRequerida
 
         ValidarLongitud(config["Jwt:Key"]!, "Jwt__Key");
         ValidarLongitud(config["NaturalJwt:Key"]!, "NaturalJwt__Key");
+
+        if (!Uri.TryCreate(config["NaturalApi:BaseUrl"], UriKind.Absolute, out var naturalApi) ||
+            (naturalApi.Scheme != Uri.UriSchemeHttp && naturalApi.Scheme != Uri.UriSchemeHttps))
+            throw new InvalidOperationException(
+                "NaturalApi__BaseUrl debe ser una URL absoluta http(s), p. ej. https://naturalback.vip/v2/api.");
 
         // El esquema se elige por el 'iss' del token: si coincidieran no se podrían distinguir.
         if (string.Equals(config["Jwt:Issuer"], NaturalIssuer(config), StringComparison.Ordinal))

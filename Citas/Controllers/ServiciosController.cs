@@ -7,7 +7,8 @@ namespace Citas.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-// Lectura: cualquier miembro del tenant. Escritura: solo personal '01'/'03'.
+// Los servicios se crean y se borran en Natural y llegan con POST /Sincronizacion/Natural.
+// Lectura: cualquier miembro del tenant. Ajuste (duración/disponibilidad): personal '01'/'03'.
 // (Las políticas de clase y de acción se suman, por eso van por acción.)
 public class ServiciosController : ControllerBase
 {
@@ -15,27 +16,15 @@ public class ServiciosController : ControllerBase
 
     public ServiciosController(IServicioAppService servicios) => _servicios = servicios;
 
-    /// <summary>Catálogo de servicios del tenant (lectura para personal y clientes).</summary>
+    /// <summary>Catálogo del tenant: el cliente ve solo los agendables; el personal, todos.</summary>
     [Authorize(Policy = Politicas.MiembroTenant)]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ServicioResponseDto>>> GetServicios()
         => Ok(await _servicios.ListarAsync());
 
-    [Authorize(Policy = Politicas.Administrador)]
-    [HttpPost]
-    public async Task<ActionResult<ServicioResponseDto>> CreateServicio([FromBody] CreateServicioDto dto)
-    {
-        var servicio = await _servicios.CrearAsync(dto);
-        return CreatedAtAction(nameof(GetServicios), new { id = servicio.IdServicio }, servicio);
-    }
-
+    /// <summary>Ajusta la duración (TiempoEstimado) y/o la disponibilidad para agendar (Activo).</summary>
     [Authorize(Policy = Politicas.Administrador)]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateServicio(int id, [FromBody] UpdateServicioDto dto)
         => await _servicios.ActualizarAsync(id, dto) ? NoContent() : NotFound("Servicio no encontrado");
-
-    [Authorize(Policy = Politicas.Administrador)]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteServicio(int id)
-        => await _servicios.EliminarAsync(id) ? NoContent() : NotFound("Servicio no encontrado");
 }

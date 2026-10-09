@@ -16,9 +16,13 @@ internal static class CitaMapper
             db.HoraEstimadaFin,
             db.Observaciones,
             db.Cliente is null ? null : UsuarioMapper.ToDomain(db.Cliente),
-            db.Empleado is null ? null : UsuarioMapper.ToDomain(db.Empleado));
+            db.Empleado is null ? null : UsuarioMapper.ToDomain(db.Empleado),
+            db.DetalleCitas.Select(d => DetalleCita.Rehidratar(
+                d.IdDetalle, d.IdServicio, d.ValorServicio, d.TiempoEstimado, d.Servicio?.NombreServicio)));
 
-    public static CitaDbModel ToDbModel(Cita c)
+    // Los detalles solo viajan al insertar la cita (son inmutables después); al actualizar
+    // se mandan solo las columnas de la cita para no tocar sus líneas.
+    public static CitaDbModel ToDbModel(Cita c, bool incluirDetalles = false)
         => new()
         {
             IdCita = c.IdCita,
@@ -29,6 +33,15 @@ internal static class CitaMapper
             HoraEstimadaCita = c.HoraEstimadaCita,
             HoraEstimadaFin = c.HoraEstimadaFin,
             Observaciones = c.Observaciones,
-            // Sin navegaciones a propósito: al guardar solo viajan las columnas de la cita.
+            // Sin navegaciones a Usuario a propósito: al guardar no viajan cliente ni empleado.
+            DetalleCitas = incluirDetalles
+                ? c.Detalles.Select(d => new DetalleCitaDbModel
+                {
+                    IdServicio = d.IdServicio,
+                    ValorServicio = d.ValorServicio,
+                    TiempoEstimado = d.TiempoEstimado,
+                    // TenantId lo sella el DbContext al guardar.
+                }).ToList()
+                : [],
         };
 }

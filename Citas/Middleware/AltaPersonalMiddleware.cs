@@ -10,7 +10,8 @@ namespace Citas.Middleware;
 /// que exista el Usuario de Citas para (tenant, personaNaturalId) —lo crea la primera
 /// vez— y agrega su id como claim 'userId', igual que lo trae el token de un cliente.
 /// Si la empresa aún no activó la agenda no se crea nada y las políticas de personal
-/// responderán 403 (salvo "activar agenda").
+/// responderán 403 (salvo "activar agenda"). Si su Usuario existe pero está inactivo (ya
+/// no figura en Natural tras una sincronización), la petición termina en 403 con mensaje.
 /// </summary>
 public class AltaPersonalMiddleware
 {

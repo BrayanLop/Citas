@@ -84,7 +84,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Obligatorias: `POSTGRES_PASSWORD`, `Jwt__Key` y `NaturalJwt__Key` (ver README).
+Obligatorias: `POSTGRES_PASSWORD`, `Jwt__Key`, `NaturalJwt__Key` y `NaturalApi__BaseUrl` (ver README).
 
 ---
 

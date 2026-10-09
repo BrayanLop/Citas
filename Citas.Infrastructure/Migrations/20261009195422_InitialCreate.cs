@@ -12,6 +12,9 @@ namespace Citas.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:btree_gist", ",,");
+
             migrationBuilder.CreateTable(
                 name: "Empresas",
                 columns: table => new
@@ -108,21 +111,46 @@ namespace Citas.Infrastructure.Migrations
                 name: "AgendaEmpleados",
                 columns: table => new
                 {
-                    IdHorario = table.Column<int>(type: "integer", nullable: false)
+                    IdFranja = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     IdUsuario = table.Column<int>(type: "integer", nullable: false),
-                    FechaReservada = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    HoraEstimadaCita = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    HoraEstimadaFin = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    EstadoHorario = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    DiaSemana = table.Column<int>(type: "integer", nullable: false),
+                    HoraInicio = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    HoraFin = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
                     TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AgendaEmpleados", x => x.IdHorario);
+                    table.PrimaryKey("PK_AgendaEmpleados", x => x.IdFranja);
+                    table.CheckConstraint("CK_AgendaEmpleados_DiaSemana", "\"DiaSemana\" BETWEEN 0 AND 6");
+                    table.CheckConstraint("CK_AgendaEmpleados_Franja", "\"HoraFin\" > \"HoraInicio\"");
                     table.ForeignKey(
                         name: "FK_AgendaEmpleados_Usuarios_IdUsuario",
                         column: x => x.IdUsuario,
+                        principalTable: "Usuarios",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BloqueosAgenda",
+                columns: table => new
+                {
+                    IdBloqueo = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    IdEmpleado = table.Column<int>(type: "integer", nullable: false),
+                    Inicio = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Fin = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Motivo = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BloqueosAgenda", x => x.IdBloqueo);
+                    table.CheckConstraint("CK_BloqueosAgenda_Rango", "\"Fin\" > \"Inicio\"");
+                    table.ForeignKey(
+                        name: "FK_BloqueosAgenda_Usuarios_IdEmpleado",
+                        column: x => x.IdEmpleado,
                         principalTable: "Usuarios",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -137,15 +165,15 @@ namespace Citas.Infrastructure.Migrations
                     IdCliente = table.Column<int>(type: "integer", nullable: false),
                     IdEmpleado = table.Column<int>(type: "integer", nullable: false),
                     Estado = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    FechaCita = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    HoraEstimadaCita = table.Column<TimeSpan>(type: "interval", nullable: false),
-                    HoraEstimadaFin = table.Column<TimeSpan>(type: "interval", nullable: true),
+                    Inicio = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Fin = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Observaciones = table.Column<string>(type: "text", nullable: true),
                     TenantId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Citas", x => x.IdCita);
+                    table.CheckConstraint("CK_Citas_Rango", "\"Fin\" > \"Inicio\"");
                     table.ForeignKey(
                         name: "FK_Citas_Usuarios_IdCliente",
                         column: x => x.IdCliente,
@@ -217,13 +245,23 @@ namespace Citas.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AgendaEmpleados_IdUsuario",
+                name: "IX_AgendaEmpleados_IdUsuario_DiaSemana",
                 table: "AgendaEmpleados",
-                column: "IdUsuario");
+                columns: new[] { "IdUsuario", "DiaSemana" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AgendaEmpleados_TenantId",
                 table: "AgendaEmpleados",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BloqueosAgenda_IdEmpleado_Inicio",
+                table: "BloqueosAgenda",
+                columns: new[] { "IdEmpleado", "Inicio" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BloqueosAgenda_TenantId",
+                table: "BloqueosAgenda",
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
@@ -232,9 +270,9 @@ namespace Citas.Infrastructure.Migrations
                 column: "IdCliente");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Citas_IdEmpleado",
+                name: "IX_Citas_IdEmpleado_Inicio",
                 table: "Citas",
-                column: "IdEmpleado");
+                columns: new[] { "IdEmpleado", "Inicio" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Citas_TenantId",
@@ -316,13 +354,33 @@ namespace Citas.Infrastructure.Migrations
                 columns: new[] { "TenantId", "PersonaNaturalId" },
                 unique: true,
                 filter: "\"PersonaNaturalId\" IS NOT NULL");
+
+            // Escrito a mano (EF no modela restricciones de exclusión): un empleado no puede
+            // tener dos citas activas (Pendiente/Confirmada, ver EstadoCita.Activos) cuyos
+            // rangos [Inicio, Fin) se crucen dentro del mismo tenant. Citas contiguas sí
+            // caben (10:00-10:30 y 10:30-11:00). Su violación (SQLSTATE 23P01) se traduce a 409.
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE "Citas" ADD CONSTRAINT "EX_Citas_EmpleadoSinCruces"
+                EXCLUDE USING gist (
+                    "TenantId" WITH =,
+                    "IdEmpleado" WITH =,
+                    tstzrange("Inicio", "Fin", '[)') WITH &&
+                )
+                WHERE ("Estado" IN ('Pendiente', 'Confirmada'));
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("""ALTER TABLE "Citas" DROP CONSTRAINT IF EXISTS "EX_Citas_EmpleadoSinCruces";""");
+
             migrationBuilder.DropTable(
                 name: "AgendaEmpleados");
+
+            migrationBuilder.DropTable(
+                name: "BloqueosAgenda");
 
             migrationBuilder.DropTable(
                 name: "DetalleCitas");

@@ -39,4 +39,5 @@ public class UsuarioDbModel : ITenantDbModel
     public ICollection<CitaDbModel> CitasCliente { get; set; } = [];
     public ICollection<CitaDbModel> CitasEmpleado { get; set; } = [];
     public ICollection<AgendaEmpleadoDbModel> AgendaEmpleado { get; set; } = [];
+    public ICollection<BloqueoAgendaDbModel> BloqueosAgenda { get; set; } = [];
 }

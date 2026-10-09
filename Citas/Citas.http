@@ -48,6 +48,58 @@ Content-Type: application/json
 GET {{Citas_HostAddress}}/Usuarios
 Authorization: Bearer {{tokenNatural}}
 
+### Horario semanal de un empleado (lun-vie 08:00-12:00 y 14:00-18:00; sábado 09:00-13:00)
+# Reemplaza todo el horario. 01/03 cualquiera; 02 solo el suyo. dia: 0=domingo ... 6=sábado.
+PUT {{Citas_HostAddress}}/AgendaEmpleado/2
+Authorization: Bearer {{tokenNatural}}
+Content-Type: application/json
+
+{
+  "franjas": [
+    { "dia": 1, "horaInicio": "08:00:00", "horaFin": "12:00:00" },
+    { "dia": 1, "horaInicio": "14:00:00", "horaFin": "18:00:00" },
+    { "dia": 2, "horaInicio": "08:00:00", "horaFin": "12:00:00" },
+    { "dia": 2, "horaInicio": "14:00:00", "horaFin": "18:00:00" },
+    { "dia": 3, "horaInicio": "08:00:00", "horaFin": "12:00:00" },
+    { "dia": 3, "horaInicio": "14:00:00", "horaFin": "18:00:00" },
+    { "dia": 4, "horaInicio": "08:00:00", "horaFin": "12:00:00" },
+    { "dia": 4, "horaInicio": "14:00:00", "horaFin": "18:00:00" },
+    { "dia": 5, "horaInicio": "08:00:00", "horaFin": "12:00:00" },
+    { "dia": 5, "horaInicio": "14:00:00", "horaFin": "18:00:00" },
+    { "dia": 6, "horaInicio": "09:00:00", "horaFin": "13:00:00" }
+  ]
+}
+
+### Bloqueos del empleado en un rango de días locales
+GET {{Citas_HostAddress}}/AgendaEmpleado/2/bloqueos?desde=2026-10-01&hasta=2026-10-31
+Authorization: Bearer {{tokenNatural}}
+
+### Bloquear una tarde (sin offset = hora local del negocio). 409 si hay citas activas en ese rango.
+POST {{Citas_HostAddress}}/AgendaEmpleado/2/bloqueos
+Authorization: Bearer {{tokenNatural}}
+Content-Type: application/json
+
+{
+  "inicio": "2026-10-23T14:00:00",
+  "fin": "2026-10-23T18:00:00",
+  "motivo": "Cita médica"
+}
+
+### Quitar un bloqueo
+DELETE {{Citas_HostAddress}}/AgendaEmpleado/2/bloqueos/1
+Authorization: Bearer {{tokenNatural}}
+
+### Reprogramar una cita (01/03): otra hora y otro empleado; lo que no venga se conserva
+PUT {{Citas_HostAddress}}/Citas/1
+Authorization: Bearer {{tokenNatural}}
+Content-Type: application/json
+
+{
+  "fechaCita": "2026-10-21",
+  "horaEstimadaCita": "15:00:00",
+  "idEmpleado": 3
+}
+
 ### Agenda del tenant
 GET {{Citas_HostAddress}}/Citas
 Authorization: Bearer {{tokenNatural}}
@@ -92,7 +144,19 @@ Authorization: Bearer {{tokenCliente}}
 GET {{Citas_HostAddress}}/Usuarios
 Authorization: Bearer {{tokenCliente}}
 
-### Agendar (la hora de fin = inicio + suma de las duraciones de los servicios)
+### Horario de un empleado (cualquier miembro del tenant)
+GET {{Citas_HostAddress}}/AgendaEmpleado/2
+Authorization: Bearer {{tokenCliente}}
+
+### Horas libres de un empleado ese día para esos servicios (hora local del negocio)
+GET {{Citas_HostAddress}}/Disponibilidad?empleadoId=2&fecha=2026-10-20&idServicios=1,2
+Authorization: Bearer {{tokenCliente}}
+
+### Días con al menos un hueco (máx. 62 días)
+GET {{Citas_HostAddress}}/Disponibilidad/dias?empleadoId=2&desde=2026-10-01&hasta=2026-10-31&idServicios=1,2
+Authorization: Bearer {{tokenCliente}}
+
+### Agendar (al menos un servicio; fin = inicio + suma de duraciones; 409 si no cabe)
 POST {{Citas_HostAddress}}/Citas
 Authorization: Bearer {{tokenCliente}}
 Content-Type: application/json
@@ -116,4 +180,15 @@ Content-Type: application/json
 
 {
   "estado": "Cancelada"
+}
+
+### Reprogramar una cita propia (solo si está Pendiente); idServicios reemplaza los servicios
+PUT {{Citas_HostAddress}}/Citas/1
+Authorization: Bearer {{tokenCliente}}
+Content-Type: application/json
+
+{
+  "fechaCita": "2026-10-22",
+  "horaEstimadaCita": "09:30:00",
+  "idServicios": [1]
 }

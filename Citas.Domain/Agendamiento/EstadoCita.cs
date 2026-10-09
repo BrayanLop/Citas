@@ -25,6 +25,16 @@ public static class EstadoCita
             [Cancelada] = [],
         };
 
+    /// <summary>
+    /// Estados que ocupan la agenda del empleado. Las citas Atendidas y Canceladas ya no
+    /// cuentan para cruces ni disponibilidad. La restricción de exclusión de la tabla Citas
+    /// (migración InitialCreate) usa esta misma lista: si cambia, hay que cambiarla allí.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Activos = [Pendiente, Confirmada];
+
+    public static bool EsActivo(string? estado) =>
+        estado is not null && Activos.Contains(estado);
+
     public static bool EsValido(string? estado) =>
         estado is not null && Todos.Contains(estado);
 

@@ -1,35 +1,42 @@
 using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Common;
-using Citas.Domain.Acceso;
 using Citas.Domain.Agendamiento;
 using Citas.Domain.Common;
-using Citas.Domain.Servicios;
 using Citas.Models;
 
 namespace Citas.Application.Agendamiento;
 
 // Qué puede hacer cada quien con una cita (además de la política del endpoint):
-//  - Cliente: solo sus citas (IdCliente = su usuario); crea para sí mismo y solo puede cancelar.
+//  - Cliente: solo sus citas (IdCliente = su usuario); crea para sí mismo, reprograma las
+//    suyas mientras estén Pendientes y solo puede cancelar.
 //  - Personal administrativo ('01'/'03'): todas las citas del tenant.
-//  - Trabajador ('02'): ve la agenda del tenant y cambia el estado solo de las citas que atiende.
+//  - Trabajador ('02'): ve la agenda del tenant y cambia el estado solo de las citas que
+//    atiende; no crea ni reprograma (lo hace administración o el propio cliente).
+//
+// Crear y reprogramar validan el hueco (ReglasAgenda) con la agenda del empleado
+// bloqueada dentro de una transacción; la restricción de exclusión de la BD es la última
+// barrera contra cruces (su violación llega aquí como ConflictException, 409).
 public class CitaAppService : ICitaAppService
 {
     private readonly ICitaRepository _citas;
-    private readonly IUsuarioRepository _usuarios;
-    private readonly IServicioRepository _servicios;
+    private readonly IAgendaEmpleadoRepository _agendas;
+    private readonly ReglasAgenda _reglas;
+    private readonly RelojAgenda _reloj;
     private readonly IUsuarioActual _actual;
     private readonly IUnitOfWork _uow;
 
     public CitaAppService(
         ICitaRepository citas,
-        IUsuarioRepository usuarios,
-        IServicioRepository servicios,
+        IAgendaEmpleadoRepository agendas,
+        ReglasAgenda reglas,
+        RelojAgenda reloj,
         IUsuarioActual actual,
         IUnitOfWork uow)
     {
         _citas = citas;
-        _usuarios = usuarios;
-        _servicios = servicios;
+        _agendas = agendas;
+        _reglas = reglas;
+        _reloj = reloj;
         _actual = actual;
         _uow = uow;
     }
@@ -60,48 +67,71 @@ public class CitaAppService : ICitaAppService
 
         if (!await _citas.ExisteUsuarioAsync(idCliente, cancellationToken))
             throw new DomainException("Cliente no encontrado.");
+        await EmpleadoActivoAsync(dto.IdEmpleado, cancellationToken);
 
-        var empleado = await _usuarios.ObtenerPorIdAsync(dto.IdEmpleado, cancellationToken);
-        if (empleado is null || !empleado.EsPersonalNatural || !empleado.EstaActivo)
-            throw new DomainException("Empleado no encontrado o inactivo.");
+        var servicios = await _reglas.ServiciosAsync(dto.IdServicios, cancellationToken);
+        var inicio = InicioUtc(DateOnly.FromDateTime(dto.FechaCita), dto.HoraEstimadaCita);
+        var cita = Cita.Programar(idCliente, dto.IdEmpleado, inicio, dto.Observaciones, servicios);
 
-        var servicios = await ServiciosDeLaCitaAsync(dto.IdServicios, cancellationToken);
+        await _uow.EjecutarEnTransaccionAsync(async ct =>
+        {
+            await _agendas.BloquearAgendaAsync(cita.IdEmpleado, ct);
+            await _reglas.ValidarHuecoAsync(cita.IdEmpleado, cita.Inicio, cita.Fin, null, ct);
+            await _citas.AgregarAsync(cita, ct);
+            return await _uow.GuardarCambiosAsync(ct);
+        }, cancellationToken);
 
-        var cita = Cita.Programar(
-            idCliente,
-            dto.IdEmpleado,
-            dto.FechaCita,
-            dto.HoraEstimadaCita,
-            dto.HoraEstimadaFin,
-            dto.Observaciones,
-            servicios);
-
-        await _citas.AgregarAsync(cita, cancellationToken);
-        await _uow.GuardarCambiosAsync(cancellationToken);
-
-        return MapToDto(cita);
+        return MapToDto(await _citas.ObtenerPorIdAsync(cita.IdCita, cancellationToken) ?? cita);
     }
 
-    public async Task<bool> ActualizarAsync(int idCita, UpdateCitaDto dto, CancellationToken cancellationToken = default)
+    public async Task<CitaResponseDto?> ReprogramarAsync(int idCita, UpdateCitaDto dto, CancellationToken cancellationToken = default)
     {
         var cita = await _citas.ObtenerPorIdAsync(idCita, cancellationToken);
         if (cita is null)
-            return false;
+            return null;
 
-        // Reprogramar conserva la hora de inicio actual (el DTO no la trae); solo cambian
-        // fecha y/u hora de fin si vienen informadas.
-        if (dto.FechaCita.HasValue || dto.HoraEstimadaFin.HasValue)
-            cita.Reprogramar(
-                dto.FechaCita ?? cita.FechaCita,
-                cita.HoraEstimadaCita,
-                dto.HoraEstimadaFin ?? cita.HoraEstimadaFin);
+        if (_actual.EsCliente)
+        {
+            if (cita.IdCliente != UsuarioActualId())
+                throw new ForbiddenAppException("La cita no es tuya.");
+            if (cita.Estado != EstadoCita.Pendiente)
+                throw new ForbiddenAppException("Solo puedes reprogramar tus citas mientras estén Pendientes.");
+        }
+        else if (!_actual.EsAdministrador)
+        {
+            throw new ForbiddenAppException("Solo el personal administrativo o el cliente pueden reprogramar citas.");
+        }
 
-        if (dto.Estado is not null)
-            cita.CambiarEstadoA(dto.Estado);
+        var mueveHueco = dto.FechaCita.HasValue || dto.HoraEstimadaCita.HasValue
+            || dto.IdEmpleado.HasValue || dto.IdServicios is not null;
 
-        _citas.Actualizar(cita);
-        await _uow.GuardarCambiosAsync(cancellationToken);
-        return true;
+        if (mueveHueco)
+        {
+            var actualLocal = _reloj.ALocal(cita.Inicio);
+            var fecha = dto.FechaCita.HasValue ? DateOnly.FromDateTime(dto.FechaCita.Value) : DateOnly.FromDateTime(actualLocal);
+            var hora = dto.HoraEstimadaCita ?? actualLocal.TimeOfDay;
+            var idEmpleado = dto.IdEmpleado ?? cita.IdEmpleado;
+
+            await EmpleadoActivoAsync(idEmpleado, cancellationToken);
+            var servicios = dto.IdServicios is null ? null : await _reglas.ServiciosAsync(dto.IdServicios, cancellationToken);
+            cita.Reprogramar(idEmpleado, InicioUtc(fecha, hora), servicios);
+        }
+
+        if (dto.Observaciones is not null)
+            cita.ActualizarObservaciones(dto.Observaciones);
+
+        await _uow.EjecutarEnTransaccionAsync(async ct =>
+        {
+            if (mueveHueco)
+            {
+                await _agendas.BloquearAgendaAsync(cita.IdEmpleado, ct);
+                await _reglas.ValidarHuecoAsync(cita.IdEmpleado, cita.Inicio, cita.Fin, cita.IdCita, ct);
+            }
+            _citas.Actualizar(cita);
+            return await _uow.GuardarCambiosAsync(ct);
+        }, cancellationToken);
+
+        return MapToDto(await _citas.ObtenerPorIdAsync(idCita, cancellationToken) ?? cita);
     }
 
     public async Task<bool> CambiarEstadoAsync(int idCita, PartialUpdateCitaDto dto, CancellationToken cancellationToken = default)
@@ -122,6 +152,8 @@ public class CitaAppService : ICitaAppService
             throw new ForbiddenAppException("Solo puedes cambiar el estado de las citas que atiendes.");
         }
 
+        // Las transiciones solo van de activa a activa (Pendiente -> Confirmada) o de activa a
+        // terminal: cambiar el estado nunca crea un cruce nuevo.
         if (dto.Estado is not null)
             cita.CambiarEstadoA(dto.Estado);
 
@@ -141,49 +173,50 @@ public class CitaAppService : ICitaAppService
         return true;
     }
 
-    // Servicios pedidos para la cita: deben existir en el tenant (el filtro de tenant del
-    // repositorio deja fuera los de otras empresas). Que sean agendables lo valida Cita.
-    private async Task<IReadOnlyList<Servicio>> ServiciosDeLaCitaAsync(
-        List<int>? ids,
-        CancellationToken cancellationToken)
+    private async Task EmpleadoActivoAsync(int idEmpleado, CancellationToken cancellationToken)
     {
-        if (ids is null || ids.Count == 0)
-            return [];
-        if (ids.Distinct().Count() != ids.Count)
-            throw new DomainException("La cita tiene servicios repetidos.");
+        if (await _reglas.EmpleadoActivoAsync(idEmpleado, cancellationToken) is null)
+            throw new DomainException("Empleado no encontrado o inactivo.");
+    }
 
-        var servicios = await _servicios.ObtenerPorIdsAsync(ids, cancellationToken);
-        var faltantes = ids.Except(servicios.Select(s => s.IdServicio)).ToList();
-        if (faltantes.Count > 0)
-            throw new DomainException($"Servicio no encontrado: {string.Join(", ", faltantes)}.");
-
-        // Mismo orden en que se pidieron.
-        return ids.Select(id => servicios.First(s => s.IdServicio == id)).ToList();
+    // Fecha y hora locales del negocio -> instante UTC.
+    private DateTime InicioUtc(DateOnly fecha, TimeSpan hora)
+    {
+        if (hora < TimeSpan.Zero || hora >= TimeSpan.FromDays(1))
+            throw new DomainException("'horaEstimadaCita' debe ser una hora del día (HH:mm:ss).");
+        return _reloj.AUtc(fecha, TimeOnly.FromTimeSpan(hora));
     }
 
     private int UsuarioActualId()
         => _actual.UsuarioId ?? throw new ForbiddenAppException("El usuario no está dado de alta en esta empresa.");
 
-    private static CitaResponseDto MapToDto(Cita c) => new()
+    private CitaResponseDto MapToDto(Cita c)
     {
-        IdCita = c.IdCita,
-        IdCliente = c.IdCliente,
-        IdEmpleado = c.IdEmpleado,
-        Estado = c.Estado,
-        FechaCita = c.FechaCita,
-        HoraEstimadaCita = c.HoraEstimadaCita,
-        HoraEstimadaFin = c.HoraEstimadaFin,
-        Observaciones = c.Observaciones,
-        NombreCliente = c.Cliente?.NombreUsuario,
-        NombreEmpleado = c.Empleado?.NombreUsuario,
-        Servicios = c.Detalles.Select(d => new DetalleCitaDto
+        var inicioLocal = _reloj.ALocal(c.Inicio);
+        var finLocal = _reloj.ALocal(c.Fin);
+        return new CitaResponseDto
         {
-            IdServicio = d.IdServicio,
-            NombreServicio = d.NombreServicio,
-            ValorServicio = d.ValorServicio,
-            TiempoEstimado = d.TiempoEstimado,
-        }).ToList(),
-        DuracionTotal = c.DuracionTotal,
-        ValorTotal = c.Detalles.Sum(d => d.ValorServicio),
-    };
+            IdCita = c.IdCita,
+            IdCliente = c.IdCliente,
+            IdEmpleado = c.IdEmpleado,
+            Estado = c.Estado,
+            FechaCita = inicioLocal.Date,
+            HoraEstimadaCita = inicioLocal.TimeOfDay,
+            HoraEstimadaFin = finLocal.TimeOfDay,
+            Inicio = _reloj.ConOffset(c.Inicio),
+            Fin = _reloj.ConOffset(c.Fin),
+            Observaciones = c.Observaciones,
+            NombreCliente = c.Cliente?.NombreUsuario,
+            NombreEmpleado = c.Empleado?.NombreUsuario,
+            Servicios = c.Detalles.Select(d => new DetalleCitaDto
+            {
+                IdServicio = d.IdServicio,
+                NombreServicio = d.NombreServicio,
+                ValorServicio = d.ValorServicio,
+                TiempoEstimado = d.TiempoEstimado,
+            }).ToList(),
+            DuracionTotal = c.DuracionTotal,
+            ValorTotal = c.ValorTotal,
+        };
+    }
 }

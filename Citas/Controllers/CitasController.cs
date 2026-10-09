@@ -35,11 +35,14 @@ public class CitasController : ControllerBase
         return CreatedAtAction(nameof(GetCitas), new { id = cita.IdCita }, cita);
     }
 
-    /// <summary>Reprograma una cita (solo personal '01'/'03').</summary>
-    [Authorize(Policy = Politicas.Administrador)]
+    /// <summary>
+    /// Reprograma una cita (fecha/hora, empleado, servicios, observaciones): personal
+    /// '01'/'03' cualquiera; el cliente solo las suyas en estado Pendiente. Devuelve la cita.
+    /// </summary>
+    [Authorize(Policy = Politicas.ClienteOAdministrador)]
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateCita(int id, [FromBody] UpdateCitaDto dto)
-        => await _citas.ActualizarAsync(id, dto) ? NoContent() : NotFound("Cita no encontrada");
+    public async Task<ActionResult<CitaResponseDto>> UpdateCita(int id, [FromBody] UpdateCitaDto dto)
+        => await _citas.ReprogramarAsync(id, dto) is { } cita ? Ok(cita) : NotFound("Cita no encontrada");
 
     /// <summary>
     /// Cambia el estado: '01'/'03' cualquiera, '02' solo las que atiende, el cliente solo

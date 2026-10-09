@@ -1,4 +1,5 @@
 using Citas.Application.Acceso.Abstractions;
+using Citas.Application.Agendamiento;
 using Citas.Application.Common;
 using Citas.Application.Integracion;
 using Citas.Application.Diagnostico;
@@ -60,6 +61,30 @@ public static class DependencyInjection
         // API de Natural (catálogo de servicios y personal) para la sincronización.
         services.AddNaturalApi(configuration);
 
+        // Zona horaria, intervalo y anticipación de la agenda.
+        services.AddAgenda(configuration);
+
+        return services;
+    }
+
+    // Agenda:ZonaHoraria (por defecto America/Bogota; si el sistema no la tiene, UTC-5 fijo),
+    // Agenda:IntervaloMinutos (por defecto 15) y Agenda:AnticipacionMinimaMinutos (por defecto 0).
+    // La zona se resuelve aquí para que un id inválido haga fallar el arranque.
+    private static IServiceCollection AddAgenda(this IServiceCollection services, IConfiguration configuration)
+    {
+        var seccion = configuration.GetSection("Agenda");
+        services.AddSingleton(new OpcionesAgenda
+        {
+            ZonaHoraria = OpcionesAgenda.ResolverZona(seccion["ZonaHoraria"]),
+            IntervaloMinutos = seccion.GetValue<int?>("IntervaloMinutos") is > 0 and var intervalo
+                ? intervalo
+                : OpcionesAgenda.IntervaloMinutosPorDefecto,
+            AnticipacionMinimaMinutos = seccion.GetValue<int?>("AnticipacionMinimaMinutos") is >= 0 and var anticipacion
+                ? anticipacion
+                : 0,
+        });
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<RelojAgenda>();
         return services;
     }
 

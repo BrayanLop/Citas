@@ -21,6 +21,14 @@ public sealed class ConflictException : AppException
     public ConflictException(string message) : base(message) { }
 }
 
+/// <summary>Recurso inexistente en el tenant (HTTP 404).</summary>
+public sealed class NotFoundAppException : AppException
+{
+    public override int StatusCode => 404;
+    public override string Title => "No encontrado";
+    public NotFoundAppException(string message) : base(message) { }
+}
+
 /// <summary>Credenciales inválidas o ausentes (HTTP 401).</summary>
 public sealed class UnauthorizedAppException : AppException
 {

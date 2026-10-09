@@ -16,6 +16,10 @@ public static class DependencyInjection
     {
         services.AddScoped<ICitaAppService, CitaAppService>();
         services.AddScoped<IAgendaEmpleadoAppService, AgendaEmpleadoAppService>();
+        services.AddScoped<IDisponibilidadAppService, DisponibilidadAppService>();
+        services.AddScoped<ReglasAgenda>();
+        // OpcionesAgenda (sección Agenda) y RelojAgenda los registra AddInfrastructure,
+        // que es quien lee la configuración.
         services.AddScoped<IEmpresaAppService, EmpresaAppService>();
         services.AddScoped<IServicioAppService, ServicioAppService>();
         services.AddScoped<IUsuarioAppService, UsuarioAppService>();

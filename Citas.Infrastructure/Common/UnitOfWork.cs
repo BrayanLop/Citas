@@ -1,5 +1,8 @@
 using Citas.Application.Common;
 using Citas.Data;
+using Citas.Domain.Common;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Citas.Infrastructure.Common;
 
@@ -10,8 +13,20 @@ public class UnitOfWork : IUnitOfWork
 
     public UnitOfWork(CitasContext db) => _db = db;
 
-    public Task<int> GuardarCambiosAsync(CancellationToken cancellationToken = default)
-        => _db.SaveChangesAsync(cancellationToken);
+    public async Task<int> GuardarCambiosAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
+        {
+            // La restricción de exclusión de Citas (EX_Citas_EmpleadoSinCruces) frenó un cruce
+            // que se coló entre la validación y el guardado: es un conflicto, no un 500.
+            _db.ChangeTracker.Clear();
+            throw new ConflictException("El empleado ya tiene otra cita en ese horario. Elige otra hora.");
+        }
+    }
 
     public async Task<T> EjecutarEnTransaccionAsync<T>(
         Func<CancellationToken, Task<T>> operacion,

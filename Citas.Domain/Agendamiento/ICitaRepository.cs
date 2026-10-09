@@ -15,6 +15,18 @@ public interface ICitaRepository
         int? empleadoId = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Citas activas (Pendiente/Confirmada) del empleado que se cruzan con
+    /// [desdeUtc, hastaUtc), sin detalles ni nombres. Opcionalmente excluye una cita
+    /// (la que se está reprogramando).
+    /// </summary>
+    Task<IReadOnlyList<Cita>> ListarActivasDeEmpleadoAsync(
+        int idEmpleado,
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int? excluirIdCita = null,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Obtiene una cita por su identificador, o null si no existe en el tenant.</summary>
     Task<Cita?> ObtenerPorIdAsync(int idCita, CancellationToken cancellationToken = default);
 
@@ -23,7 +35,9 @@ public interface ICitaRepository
 
     Task AgregarAsync(Cita cita, CancellationToken cancellationToken = default);
 
-    /// <summary>Persiste los cambios de una cita ya existente.</summary>
+    /// <summary>
+    /// Persiste los cambios de una cita ya existente (y, si se reemplazaron, sus servicios).
+    /// </summary>
     void Actualizar(Cita cita);
 
     void Eliminar(Cita cita);

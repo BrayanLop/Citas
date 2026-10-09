@@ -16,9 +16,10 @@ public class CitaDbModel : ITenantDbModel
     [MaxLength(50)]
     public string Estado { get; set; } = string.Empty;
 
-    public DateTime FechaCita { get; set; }
-    public TimeSpan HoraEstimadaCita { get; set; }
-    public TimeSpan? HoraEstimadaFin { get; set; }
+    // Instantes en UTC (timestamptz). La fecha/hora local del negocio se calcula al leer.
+    public DateTime Inicio { get; set; }
+    public DateTime Fin { get; set; }
+
     public string? Observaciones { get; set; }
 
     [Required]

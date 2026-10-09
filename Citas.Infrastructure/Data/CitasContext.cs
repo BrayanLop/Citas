@@ -30,6 +30,7 @@ public class CitasContext : DbContext
     public DbSet<CitaDbModel> Citas => Set<CitaDbModel>();
     public DbSet<DetalleCitaDbModel> DetalleCitas => Set<DetalleCitaDbModel>();
     public DbSet<AgendaEmpleadoDbModel> AgendaEmpleados => Set<AgendaEmpleadoDbModel>();
+    public DbSet<BloqueoAgendaDbModel> BloqueosAgenda => Set<BloqueoAgendaDbModel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +40,10 @@ public class CitasContext : DbContext
         // Aquí queda lo que las anotaciones no expresan bien: relaciones, precisión,
         // defaults, índices únicos y la configuración común de multitenancy.
         // No hay seed de empresas: cada empresa se crea al "activar agenda" desde Natural.
+
+        // btree_gist permite combinar '=' (tenant, empleado) con '&&' (rangos de tiempo) en
+        // la restricción de exclusión de Citas.
+        modelBuilder.HasPostgresExtension("btree_gist");
 
         modelBuilder.Entity<PersonaDbModel>()
             .HasIndex(e => e.Email)
@@ -91,6 +96,10 @@ public class CitasContext : DbContext
                 .WithMany(u => u.CitasEmpleado)
                 .HasForeignKey(e => e.IdEmpleado)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.IdEmpleado, e.Inicio });
+            entity.ToTable(t => t.HasCheckConstraint("CK_Citas_Rango", "\"Fin\" > \"Inicio\""));
+            // Además, la migración crea la restricción de exclusión EX_Citas_EmpleadoSinCruces
+            // (EF no sabe modelarla): un empleado no puede tener dos citas activas que se crucen.
         });
 
         modelBuilder.Entity<DetalleCitaDbModel>(entity =>
@@ -106,11 +115,29 @@ public class CitasContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<AgendaEmpleadoDbModel>()
-            .HasOne(e => e.Usuario)
-            .WithMany(u => u.AgendaEmpleado)
-            .HasForeignKey(e => e.IdUsuario)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AgendaEmpleadoDbModel>(entity =>
+        {
+            entity.HasOne(e => e.Usuario)
+                .WithMany(u => u.AgendaEmpleado)
+                .HasForeignKey(e => e.IdUsuario)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.IdUsuario, e.DiaSemana });
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_AgendaEmpleados_DiaSemana", "\"DiaSemana\" BETWEEN 0 AND 6");
+                t.HasCheckConstraint("CK_AgendaEmpleados_Franja", "\"HoraFin\" > \"HoraInicio\"");
+            });
+        });
+
+        modelBuilder.Entity<BloqueoAgendaDbModel>(entity =>
+        {
+            entity.HasOne(e => e.Empleado)
+                .WithMany(u => u.BloqueosAgenda)
+                .HasForeignKey(e => e.IdEmpleado)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.IdEmpleado, e.Inicio });
+            entity.ToTable(t => t.HasCheckConstraint("CK_BloqueosAgenda_Rango", "\"Fin\" > \"Inicio\""));
+        });
 
         // Multitenancy: a todo modelo que sea ITenantDbModel le ponemos índice por TenantId
         // y un filtro global que solo deja ver los registros del tenant actual.

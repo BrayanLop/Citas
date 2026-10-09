@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Citas.Infrastructure.Migrations
 {
     [DbContext(typeof(CitasContext))]
-    [Migration("20261009171439_InitialCreate")]
+    [Migration("20261009195422_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -23,29 +23,25 @@ namespace Citas.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gist");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.AgendaEmpleadoDbModel", b =>
                 {
-                    b.Property<int>("IdHorario")
+                    b.Property<int>("IdFranja")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdHorario"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdFranja"));
 
-                    b.Property<string>("EstadoHorario")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<int>("DiaSemana")
+                        .HasColumnType("integer");
 
-                    b.Property<DateTime>("FechaReservada")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<TimeOnly>("HoraFin")
+                        .HasColumnType("time without time zone");
 
-                    b.Property<TimeSpan>("HoraEstimadaCita")
-                        .HasColumnType("interval");
-
-                    b.Property<TimeSpan>("HoraEstimadaFin")
-                        .HasColumnType("interval");
+                    b.Property<TimeOnly>("HoraInicio")
+                        .HasColumnType("time without time zone");
 
                     b.Property<int>("IdUsuario")
                         .HasColumnType("integer");
@@ -55,13 +51,56 @@ namespace Citas.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.HasKey("IdHorario");
-
-                    b.HasIndex("IdUsuario");
+                    b.HasKey("IdFranja");
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("AgendaEmpleados");
+                    b.HasIndex("IdUsuario", "DiaSemana");
+
+                    b.ToTable("AgendaEmpleados", t =>
+                        {
+                            t.HasCheckConstraint("CK_AgendaEmpleados_DiaSemana", "\"DiaSemana\" BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("CK_AgendaEmpleados_Franja", "\"HoraFin\" > \"HoraInicio\"");
+                        });
+                });
+
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.BloqueoAgendaDbModel", b =>
+                {
+                    b.Property<int>("IdBloqueo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdBloqueo"));
+
+                    b.Property<DateTime>("Fin")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Inicio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("IdBloqueo");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("IdEmpleado", "Inicio");
+
+                    b.ToTable("BloqueosAgenda", t =>
+                        {
+                            t.HasCheckConstraint("CK_BloqueosAgenda_Rango", "\"Fin\" > \"Inicio\"");
+                        });
                 });
 
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", b =>
@@ -77,20 +116,17 @@ namespace Citas.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<DateTime>("FechaCita")
+                    b.Property<DateTime>("Fin")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<TimeSpan>("HoraEstimadaCita")
-                        .HasColumnType("interval");
-
-                    b.Property<TimeSpan?>("HoraEstimadaFin")
-                        .HasColumnType("interval");
 
                     b.Property<int>("IdCliente")
                         .HasColumnType("integer");
 
                     b.Property<int>("IdEmpleado")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime>("Inicio")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Observaciones")
                         .HasColumnType("text");
@@ -104,11 +140,14 @@ namespace Citas.Infrastructure.Migrations
 
                     b.HasIndex("IdCliente");
 
-                    b.HasIndex("IdEmpleado");
-
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Citas");
+                    b.HasIndex("IdEmpleado", "Inicio");
+
+                    b.ToTable("Citas", t =>
+                        {
+                            t.HasCheckConstraint("CK_Citas_Rango", "\"Fin\" > \"Inicio\"");
+                        });
                 });
 
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.DetalleCitaDbModel", b =>
@@ -386,6 +425,17 @@ namespace Citas.Infrastructure.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.BloqueoAgendaDbModel", b =>
+                {
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Empleado")
+                        .WithMany("BloqueosAgenda")
+                        .HasForeignKey("IdEmpleado")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Empleado");
+                });
+
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", b =>
                 {
                     b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Cliente")
@@ -475,6 +525,8 @@ namespace Citas.Infrastructure.Migrations
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", b =>
                 {
                     b.Navigation("AgendaEmpleado");
+
+                    b.Navigation("BloqueosAgenda");
 
                     b.Navigation("CitasCliente");
 

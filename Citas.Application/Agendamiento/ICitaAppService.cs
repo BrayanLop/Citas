@@ -13,8 +13,8 @@ public interface ICitaAppService
 
     Task<CitaResponseDto> AgendarAsync(CreateCitaDto dto, CancellationToken cancellationToken = default);
 
-    /// <summary>Reprograma y/o cambia el estado. Devuelve false si la cita no existe.</summary>
-    Task<bool> ActualizarAsync(int idCita, UpdateCitaDto dto, CancellationToken cancellationToken = default);
+    /// <summary>Reprograma (fecha/hora, empleado, servicios, observaciones). Null si la cita no existe.</summary>
+    Task<CitaResponseDto?> ReprogramarAsync(int idCita, UpdateCitaDto dto, CancellationToken cancellationToken = default);
 
     /// <summary>Cambia solo el estado. Devuelve false si la cita no existe.</summary>
     Task<bool> CambiarEstadoAsync(int idCita, PartialUpdateCitaDto dto, CancellationToken cancellationToken = default);

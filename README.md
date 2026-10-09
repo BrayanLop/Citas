@@ -40,6 +40,9 @@ obligatoria y el error dice cuál. Plantilla con todos los nombres: [`.env.examp
 | `NaturalApi__BaseUrl` | sí | URL base de la API de Natural (p. ej. `https://naturalback.vip/v2/api`) para sincronizar |
 | `NaturalApi__TimeoutSegundos` | no | Timeout de cada llamada a Natural (por defecto 15) |
 | `NaturalApi__TiempoEstimadoPorDefecto` | no | Minutos que recibe un servicio nuevo al sincronizar (por defecto 30) |
+| `Agenda__ZonaHoraria` | no | Zona horaria del negocio, id IANA (por defecto `America/Bogota`; si el sistema no la tiene, UTC-5 fijo). Un id desconocido hace fallar el arranque |
+| `Agenda__IntervaloMinutos` | no | Cada cuántos minutos se ofrecen horas de inicio en la disponibilidad (por defecto 15) |
+| `Agenda__AnticipacionMinimaMinutos` | no | Margen mínimo entre ahora y el inicio de una cita nueva o reprogramada (por defecto 0) |
 | `Cors__AllowedOrigins__0`, `__1`... | no | Orígenes permitidos; vacío = cualquier origen sin credenciales |
 | `RunMigrationsOnStartup` | no | `true` aplica las migraciones al arrancar |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | solo Docker | Contenedor local de PostgreSQL |
@@ -105,11 +108,65 @@ el token (401/403 allá) o la petición no trae token de Natural; `502` si Natur
 responde, tarda más del timeout o devuelve algo no interpretable. En esos casos no se
 modifica nada en Citas.
 
-Una cita puede llevar servicios (`idServicios` en `POST /Citas`, ids de Citas): deben ser
-del tenant y agendables, el empleado debe estar activo, y la hora de fin se calcula como
+Cada cita lleva **al menos un servicio** (`idServicios` en `POST /Citas`, ids de Citas):
+deben ser del tenant y agendables, el empleado debe estar activo, y el fin se calcula como
 inicio + suma de los `TiempoEstimado`. Cada línea (`DetalleCitas`) guarda el valor y la
-duración del servicio en el momento de agendar. Pendiente (Fase 4): validar solapes con
-otras citas del empleado y con su horario (`AgendaEmpleado`).
+duración del servicio en el momento de agendar (o de reprogramar con servicios nuevos).
+
+## Agenda: horarios, bloqueos y disponibilidad
+
+### Fechas y zona horaria
+
+- En la BD, `Citas.Inicio/Fin` y `BloqueosAgenda.Inicio/Fin` son `timestamptz` (instantes
+  UTC). El horario semanal (`AgendaEmpleados`) guarda día + horas locales (`time`).
+- La API habla en **hora local del negocio** (`Agenda__ZonaHoraria`, por defecto
+  `America/Bogota`):
+  - Citas, entrada: `fechaCita` (`"YYYY-MM-DD"` o `"YYYY-MM-DDT00:00:00"`, solo cuenta la
+    fecha) + `horaEstimadaCita` (`"HH:mm:ss"`), sin offset.
+  - Citas, salida: `fechaCita` (`"YYYY-MM-DDT00:00:00"`), `horaEstimadaCita` y
+    `horaEstimadaFin` (`"HH:mm:ss"`) locales, y además `inicio`/`fin` con el offset del
+    negocio (`"2026-10-20T09:00:00-05:00"`).
+  - Bloqueos: `inicio`/`fin` ISO 8601; sin offset = hora local del negocio, con offset o
+    `Z` se respeta el instante. Se devuelven con el offset del negocio.
+  - Días de la semana: `0` = domingo … `6` = sábado (como `Date.getDay()` en JS).
+- "Hoy", "pasado" y los días de la disponibilidad se calculan en la zona del negocio.
+
+### Reglas al crear (`POST /Citas`) y reprogramar (`PUT /Citas/{id}`)
+
+1. Al menos un servicio agendable (400).
+2. No en el pasado ni antes de `Agenda__AnticipacionMinimaMinutos` (400).
+3. Completamente dentro de **una** franja del horario semanal del empleado (409).
+4. Sin cruce con bloqueos del empleado (409) ni con sus citas **activas**
+   (`Pendiente`/`Confirmada`; `Atendida` y `Cancelada` no ocupan agenda) (409).
+
+Los 409 traen el motivo en `detail` (ProblemDetails). Contra carreras: crear/reprogramar
+citas, crear bloqueos y reemplazar el horario toman un *advisory lock* de PostgreSQL por
+empleado dentro de una transacción, y la tabla `Citas` tiene la restricción de exclusión
+`EX_Citas_EmpleadoSinCruces` (`EXCLUDE USING gist (TenantId =, IdEmpleado =,
+tstzrange(Inicio, Fin) &&) WHERE Estado IN ('Pendiente','Confirmada')`, extensión
+`btree_gist`, creada en `InitialCreate`). Si aun así salta (SQLSTATE `23P01`) se responde 409.
+Citas contiguas (10:00-10:30 y 10:30-11:00) sí se permiten.
+
+Cambiar el horario semanal no toca las citas ya agendadas aunque queden fuera de él: el
+horario solo condiciona citas nuevas o reprogramadas. Crear un bloqueo que se cruce con
+citas activas se rechaza con 409 indicando cuántas afecta (no se cancelan solas).
+
+### Endpoints
+
+| Endpoint | Entrada | Salida |
+|---|---|---|
+| `GET /AgendaEmpleado/{usuarioId}` | — | `{ idEmpleado, nombreEmpleado, zonaHoraria, franjas: [{ dia, horaInicio, horaFin }] }` (404 si el empleado no existe o está inactivo) |
+| `PUT /AgendaEmpleado/{usuarioId}` | `{ franjas: [{ dia: 1, horaInicio: "08:00:00", horaFin: "12:00:00" }, ...] }` (reemplaza todo; `[]` = no trabaja) | el horario guardado. 400 si hay solapes o inicio ≥ fin |
+| `GET /AgendaEmpleado/{usuarioId}/bloqueos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` | por defecto desde hoy, 31 días; máx. 366 | `[{ idBloqueo, idEmpleado, inicio, fin, motivo }]` |
+| `POST /AgendaEmpleado/{usuarioId}/bloqueos` | `{ inicio, fin, motivo? }` (motivo ≤ 200) | 201 con el bloqueo; 409 si afecta citas activas |
+| `DELETE /AgendaEmpleado/{usuarioId}/bloqueos/{id}` | — | 204 / 404 |
+| `GET /Disponibilidad?empleadoId=&fecha=YYYY-MM-DD&idServicios=1,2` | `idServicios` con comas o repetido | `{ idEmpleado, fecha, duracionTotal, intervaloMinutos, zonaHoraria, horas: ["09:00:00", ...] }` |
+| `GET /Disponibilidad/dias?empleadoId=&desde=&hasta=&idServicios=1,2` | máx. 62 días | `{ idEmpleado, desde, hasta, duracionTotal, dias: ["2026-10-20", ...] }` |
+| `PUT /Citas/{id}` (reprogramar) | `{ fechaCita?, horaEstimadaCita?, idEmpleado?, idServicios?, observaciones? }`; lo que no venga se conserva; `idServicios` reemplaza los servicios (nueva foto de valor/duración) | 200 con la cita. El estado ya no se cambia aquí (usa `PATCH`) |
+
+Las horas libres se recorren desde el inicio de cada franja cada `Agenda__IntervaloMinutos`
+y excluyen horas pasadas (y la anticipación mínima), bloqueos y citas activas. Un día
+pasado devuelve `horas: []`.
 
 ## Endpoints principales y permisos
 
@@ -124,11 +181,16 @@ otras citas del empleado y con su horario (`AgendaEmpleado`).
 | `GET /Servicios` | personal (todos, con `agendable`) o cliente (solo agendables) del tenant |
 | `PUT /Servicios/{id}` (`tiempoEstimado`, `activo`) | personal `01`/`03`; no hay `POST`/`DELETE`: los servicios vienen de Natural |
 | `GET /Usuarios` | personal del tenant; el cliente solo ve empleados activos |
-| `POST/DELETE /Usuarios`, `GET /Roles`, `PATCH /AgendaEmpleado/{id}` | personal `01`/`03` |
+| `POST/DELETE /Usuarios`, `GET /Roles` | personal `01`/`03` |
+| `GET /AgendaEmpleado/{usuarioId}` | cualquier miembro del tenant (cliente incluido); solo empleados activos |
+| `PUT /AgendaEmpleado/{usuarioId}`, `POST`/`DELETE .../bloqueos` | `01`/`03` sobre cualquier empleado; `02` solo sobre su propia agenda |
+| `GET /AgendaEmpleado/{usuarioId}/bloqueos` | personal del tenant (el cliente no ve motivos; la disponibilidad ya los descuenta) |
+| `GET /Disponibilidad`, `GET /Disponibilidad/dias` | cualquier miembro del tenant |
 | `GET /Citas` | personal ve todo el tenant; el cliente solo las suyas |
 | `POST /Citas` | cliente (para sí mismo) o personal `01`/`03` |
 | `PATCH /Citas/{id}` (estado) | `01`/`03` cualquiera; `02` solo las que atiende; cliente solo cancelar las suyas |
-| `PUT /Citas/{id}`, `DELETE /Citas/{id}` | personal `01`/`03` |
+| `PUT /Citas/{id}` (reprogramar) | `01`/`03` cualquier cita activa; cliente solo las suyas en `Pendiente`; `02` no |
+| `DELETE /Citas/{id}` | personal `01`/`03` |
 
 Sin token: 401. Con token pero sin permiso (o empresa sin agenda activada): 403.
 

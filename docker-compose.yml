@@ -46,6 +46,9 @@ services:
       NaturalApi__BaseUrl: ${NaturalApi__BaseUrl:?Define NaturalApi__BaseUrl en .env (URL de la API de Natural)}
       NaturalApi__TimeoutSegundos: ${NaturalApi__TimeoutSegundos:-15}
       NaturalApi__TiempoEstimadoPorDefecto: ${NaturalApi__TiempoEstimadoPorDefecto:-30}
+      Agenda__ZonaHoraria: ${Agenda__ZonaHoraria:-America/Bogota}
+      Agenda__IntervaloMinutos: ${Agenda__IntervaloMinutos:-15}
+      Agenda__AnticipacionMinimaMinutos: ${Agenda__AnticipacionMinimaMinutos:-0}
       Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0:-}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: "http://+:8080"

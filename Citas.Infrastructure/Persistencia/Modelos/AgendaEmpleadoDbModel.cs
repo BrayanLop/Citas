@@ -3,20 +3,18 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Citas.Infrastructure.Persistencia.Modelos;
 
+// Una fila por franja del horario semanal de un empleado (hora local del negocio).
+// DiaSemana: 0 = domingo ... 6 = sábado (System.DayOfWeek).
 [Table("AgendaEmpleados")]
 public class AgendaEmpleadoDbModel : ITenantDbModel
 {
     [Key]
-    public int IdHorario { get; set; }
+    public int IdFranja { get; set; }
 
     public int IdUsuario { get; set; }
-    public DateTime FechaReservada { get; set; }
-    public TimeSpan HoraEstimadaCita { get; set; }
-    public TimeSpan HoraEstimadaFin { get; set; }
-
-    [Required]
-    [MaxLength(50)]
-    public string EstadoHorario { get; set; } = string.Empty;
+    public int DiaSemana { get; set; }
+    public TimeOnly HoraInicio { get; set; }
+    public TimeOnly HoraFin { get; set; }
 
     [Required]
     [MaxLength(50)]

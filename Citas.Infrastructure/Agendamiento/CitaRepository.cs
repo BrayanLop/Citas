@@ -22,13 +22,7 @@ public class CitaRepository : ICitaRepository
         int? empleadoId = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.Citas
-            .AsNoTracking()
-            .Include(c => c.Cliente)
-            .Include(c => c.Empleado)
-            .Include(c => c.DetalleCitas)
-                .ThenInclude(d => d.Servicio)
-            .AsQueryable();
+        var query = ConDetalles();
 
         if (clienteId.HasValue)
             query = query.Where(c => c.IdCliente == clienteId.Value);
@@ -36,23 +30,36 @@ public class CitaRepository : ICitaRepository
             query = query.Where(c => c.IdEmpleado == empleadoId.Value);
 
         var filas = await query
-            .OrderByDescending(c => c.FechaCita)
-            .ThenByDescending(c => c.HoraEstimadaCita)
+            .OrderByDescending(c => c.Inicio)
             .ToListAsync(cancellationToken);
 
         return filas.Select(CitaMapper.ToDomain).ToList();
     }
 
+    public async Task<IReadOnlyList<Cita>> ListarActivasDeEmpleadoAsync(
+        int idEmpleado,
+        DateTime desdeUtc,
+        DateTime hastaUtc,
+        int? excluirIdCita = null,
+        CancellationToken cancellationToken = default)
+    {
+        var activos = EstadoCita.Activos.ToList();
+        var query = _db.Citas
+            .AsNoTracking()
+            .Where(c => c.IdEmpleado == idEmpleado
+                && activos.Contains(c.Estado)
+                && c.Inicio < hastaUtc
+                && desdeUtc < c.Fin);
+        if (excluirIdCita.HasValue)
+            query = query.Where(c => c.IdCita != excluirIdCita.Value);
+
+        var filas = await query.OrderBy(c => c.Inicio).ToListAsync(cancellationToken);
+        return filas.Select(CitaMapper.ToDomain).ToList();
+    }
+
     public async Task<Cita?> ObtenerPorIdAsync(int idCita, CancellationToken cancellationToken = default)
     {
-        var fila = await _db.Citas
-            .AsNoTracking()
-            .Include(c => c.Cliente)
-            .Include(c => c.Empleado)
-            .Include(c => c.DetalleCitas)
-                .ThenInclude(d => d.Servicio)
-            .FirstOrDefaultAsync(c => c.IdCita == idCita, cancellationToken);
-
+        var fila = await ConDetalles().FirstOrDefaultAsync(c => c.IdCita == idCita, cancellationToken);
         return fila is null ? null : CitaMapper.ToDomain(fila);
     }
 
@@ -66,7 +73,24 @@ public class CitaRepository : ICitaRepository
         _db.SincronizarIdTrasGuardar(() => cita.EstablecerIdentidad(fila.IdCita));
     }
 
-    public void Actualizar(Cita cita) => _db.Citas.Update(CitaMapper.ToDbModel(cita));
+    public void Actualizar(Cita cita)
+    {
+        _db.Citas.Update(CitaMapper.ToDbModel(cita));
+
+        if (!cita.DetallesReemplazados)
+            return;
+        foreach (var retirado in cita.DetallesRetirados)
+            _db.DetalleCitas.Remove(new DetalleCitaDbModel { IdDetalle = retirado.IdDetalle });
+        _db.DetalleCitas.AddRange(cita.Detalles.Select(d => CitaMapper.ToDbModel(d, cita.IdCita)));
+    }
 
     public void Eliminar(Cita cita) => _db.Citas.Remove(new CitaDbModel { IdCita = cita.IdCita });
+
+    private IQueryable<CitaDbModel> ConDetalles()
+        => _db.Citas
+            .AsNoTracking()
+            .Include(c => c.Cliente)
+            .Include(c => c.Empleado)
+            .Include(c => c.DetalleCitas)
+                .ThenInclude(d => d.Servicio);
 }

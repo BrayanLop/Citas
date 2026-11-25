@@ -2,5 +2,6 @@
   <Project Path="Citas.Application/Citas.Application.csproj" />
   <Project Path="Citas.Domain/Citas.Domain.csproj" />
   <Project Path="Citas.Infrastructure/Citas.Infrastructure.csproj" />
+  <Project Path="Citas.Tests/Citas.Tests.csproj" />
   <Project Path="Citas/Citas.csproj" />
 </Solution>

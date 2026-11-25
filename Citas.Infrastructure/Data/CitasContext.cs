@@ -31,6 +31,9 @@ public class CitasContext : DbContext
     public DbSet<DetalleCitaDbModel> DetalleCitas => Set<DetalleCitaDbModel>();
     public DbSet<AgendaEmpleadoDbModel> AgendaEmpleados => Set<AgendaEmpleadoDbModel>();
     public DbSet<BloqueoAgendaDbModel> BloqueosAgenda => Set<BloqueoAgendaDbModel>();
+    public DbSet<CuentaGoogleDbModel> CuentasGoogle => Set<CuentaGoogleDbModel>();
+    public DbSet<GoogleEventoCitaDbModel> GoogleEventosCita => Set<GoogleEventoCitaDbModel>();
+    public DbSet<GoogleBloqueoDbModel> GoogleBloqueos => Set<GoogleBloqueoDbModel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +140,34 @@ public class CitasContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.IdEmpleado, e.Inicio });
             entity.ToTable(t => t.HasCheckConstraint("CK_BloqueosAgenda_Rango", "\"Fin\" > \"Inicio\""));
+        });
+
+        // Integración con Google Calendar: una cuenta por empleado; una cita (o evento ocupado) se
+        // vincula a un solo evento.
+        modelBuilder.Entity<CuentaGoogleDbModel>(entity =>
+        {
+            entity.HasOne(e => e.Empleado)
+                .WithMany()
+                .HasForeignKey(e => e.IdEmpleado)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TenantId, e.IdEmpleado }).IsUnique();
+            // El webhook localiza la cuenta por su canal (sin conocer el tenant).
+            entity.HasIndex(e => e.CanalId).HasFilter("\"CanalId\" IS NOT NULL");
+        });
+
+        modelBuilder.Entity<GoogleEventoCitaDbModel>(entity =>
+        {
+            entity.HasIndex(e => new { e.TenantId, e.IdCita }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.IdEmpleado });
+        });
+
+        modelBuilder.Entity<GoogleBloqueoDbModel>(entity =>
+        {
+            entity.HasOne(e => e.Bloqueo)
+                .WithMany()
+                .HasForeignKey(e => e.IdBloqueo)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TenantId, e.IdEmpleado, e.GoogleEventId }).IsUnique();
         });
 
         // Multitenancy: a todo modelo que sea ITenantDbModel le ponemos índice por TenantId

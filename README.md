@@ -194,6 +194,25 @@ pasado devuelve `horas: []`.
 
 Sin token: 401. Con token pero sin permiso (o empresa sin agenda activada): 403.
 
+## Google Calendar (opcional)
+
+Cada empleado conecta **su** calendario y la agenda queda sincronizada en los dos sentidos: las citas
+aparecen en su Google Calendar y sus eventos ocupados bloquean esas horas para los clientes. Puesta en
+marcha (proyecto de Google Cloud, variables, verificación): `deploy/GOOGLE_CALENDAR.md`.
+
+| Endpoint | Quién | Qué hace |
+|---|---|---|
+| `GET /Google/Estado[?empleadoId=]` | Personal (admin puede consultar a otro) | Estado de la conexión (sin secretos) |
+| `POST /Google/Conexion` | Personal | Devuelve la URL de Google donde el empleado da el permiso |
+| `DELETE /Google/Conexion` | Personal | Desconecta y borra el permiso guardado |
+| `GET /Google/Callback` | Google (sin token; `state` firmado de 15 min) | Cierra la conexión y devuelve al usuario a la app |
+| `POST /Google/Notificaciones` | Google (sin token; token de canal firmado) | Aviso de cambios en el calendario |
+
+Diseño: un proceso en segundo plano **concilia** cada calendario (compara con la base de datos y corrige la
+diferencia), así que es idempotente y se recupera solo de fallos. El refresh token se guarda cifrado
+(AES-256-GCM). La base de datos de Citas sigue siendo la fuente de verdad. Las ramas de negocio no conocen a
+Google: hablan con el puerto `ICalendarioExterno`.
+
 ## Arranque rápido con Docker (todo el sistema)
 
 Necesitas el repo del frontend clonado al lado (`../citas-frontend`) y Docker:

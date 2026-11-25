@@ -117,6 +117,16 @@ public sealed class RepositorioCitasMemoria : ICitaRepository
             .OrderBy(c => c.Inicio)
             .ToList());
 
+    public Task<IReadOnlyList<Cita>> ListarParaCalendarioAsync(
+        int idEmpleado, DateTime desdeUtc, IReadOnlyCollection<int> idsPublicadas, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<Cita>>(Datos
+            .Where(c => (c.IdEmpleado == idEmpleado && c.Fin >= desdeUtc) || idsPublicadas.Contains(c.IdCita))
+            .OrderBy(c => c.Inicio)
+            // Como la base de datos real: la cita llega con los nombres del cliente y del empleado.
+            .Select(c => Cita.Rehidratar(c.IdCita, c.IdCliente, c.IdEmpleado, c.Estado, c.Inicio, c.Fin, c.Observaciones,
+                Usuarios.Datos.FirstOrDefault(u => u.Id == c.IdCliente), Usuarios.Datos.FirstOrDefault(u => u.Id == c.IdEmpleado), c.Detalles))
+            .ToList());
+
     public Task<Cita?> ObtenerPorIdAsync(int idCita, CancellationToken cancellationToken = default)
         => Task.FromResult(Datos.FirstOrDefault(c => c.IdCita == idCita));
 
@@ -138,6 +148,8 @@ public sealed class RepositorioCitasMemoria : ICitaRepository
 public sealed class RepositorioAgendaMemoria : IAgendaEmpleadoRepository
 {
     private readonly Dictionary<int, AgendaEmpleado> _horarios = [];
+
+    private int _siguienteBloqueo = 1;
 
     public List<BloqueoAgenda> Bloqueos { get; } = [];
 
@@ -162,6 +174,7 @@ public sealed class RepositorioAgendaMemoria : IAgendaEmpleadoRepository
 
     public Task AgregarBloqueoAsync(BloqueoAgenda bloqueo, CancellationToken cancellationToken = default)
     {
+        bloqueo.EstablecerIdentidad(_siguienteBloqueo++);
         Bloqueos.Add(bloqueo);
         return Task.CompletedTask;
     }

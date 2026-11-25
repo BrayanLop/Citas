@@ -30,6 +30,8 @@ public static class ConfiguracionRequerida
                 "Falta configuración obligatoria de Citas: " + string.Join(", ", faltantes) +
                 ". Defínela como variable de entorno (ver .env.example y el README).");
 
+        ValidarGoogle(config);
+
         ValidarLongitud(config["Jwt:Key"]!, "Jwt__Key");
         ValidarLongitud(config["NaturalJwt:Key"]!, "NaturalJwt__Key");
 
@@ -42,6 +44,39 @@ public static class ConfiguracionRequerida
         if (string.Equals(config["Jwt:Issuer"], NaturalIssuer(config), StringComparison.Ordinal))
             throw new InvalidOperationException(
                 "Jwt__Issuer (tokens de cliente de Citas) no puede ser igual al issuer de Natural.");
+    }
+
+    // La integración con Google es opcional, pero a medias es un error: si hay ClientId deben estar
+    // las demás variables (con la clave de cifrado válida), para fallar al arrancar y no al conectar.
+    private static void ValidarGoogle(IConfiguration config)
+    {
+        if (Valor(config, "Google:ClientId") is null)
+            return;
+
+        var faltantes = new List<string>();
+        Requerir(config, "Google:ClientSecret", "Google__ClientSecret", faltantes);
+        Requerir(config, "Google:RedirectUri", "Google__RedirectUri", faltantes);
+        Requerir(config, "Google:ClaveCifradoBase64", "Google__ClaveCifradoBase64", faltantes);
+        if (faltantes.Count > 0)
+            throw new InvalidOperationException(
+                "Google__ClientId está definida, pero falta: " + string.Join(", ", faltantes) +
+                ". Define todas las variables de Google o ninguna.");
+
+        byte[] clave;
+        try { clave = Convert.FromBase64String(config["Google:ClaveCifradoBase64"]!); }
+        catch (FormatException)
+        {
+            throw new InvalidOperationException("Google__ClaveCifradoBase64 no es base64 válido.");
+        }
+        if (clave.Length != 32)
+            throw new InvalidOperationException(
+                "Google__ClaveCifradoBase64 debe ser de 32 bytes (genera una con: openssl rand -base64 32).");
+
+        if (!Uri.TryCreate(config["Google:RedirectUri"], UriKind.Absolute, out var redirect) || redirect.Scheme != Uri.UriSchemeHttps)
+            throw new InvalidOperationException("Google__RedirectUri debe ser una URL https, p. ej. https://citas.bia.solutions/Google/Callback.");
+        if (Valor(config, "Google:UrlWebhook") is { } webhook
+            && (!Uri.TryCreate(webhook, UriKind.Absolute, out var w) || w.Scheme != Uri.UriSchemeHttps))
+            throw new InvalidOperationException("Google__UrlWebhook debe ser una URL https (Google no acepta http).");
     }
 
     public static string NaturalIssuer(IConfiguration config)

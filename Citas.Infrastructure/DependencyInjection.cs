@@ -1,15 +1,18 @@
 using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Agendamiento;
+using Citas.Application.Calendario;
 using Citas.Application.Common;
 using Citas.Application.Integracion;
 using Citas.Application.Diagnostico;
 using Citas.Data;
 using Citas.Domain.Acceso;
 using Citas.Domain.Agendamiento;
+using Citas.Domain.Calendario;
 using Citas.Domain.Empresas;
 using Citas.Domain.Servicios;
 using Citas.Infrastructure.Acceso;
 using Citas.Infrastructure.Agendamiento;
+using Citas.Infrastructure.Calendario;
 using Citas.Infrastructure.Common;
 using Citas.Infrastructure.Diagnostico;
 using Citas.Infrastructure.Empresas;
@@ -63,6 +66,47 @@ public static class DependencyInjection
 
         // Zona horaria, intervalo y anticipación de la agenda.
         services.AddAgenda(configuration);
+
+        // Integración con Google Calendar (apagada si no hay Google__ClientId).
+        services.AddGoogleCalendar(configuration);
+
+        return services;
+    }
+
+    // Google__ClientId, Google__ClientSecret, Google__RedirectUri y Google__ClaveCifradoBase64 (todas
+    // juntas) encienden la integración; Google__UrlWebhook, Google__RetornoApp,
+    // Google__IntervaloEntranteSegundos, Google__FrecuenciaSalidaSegundos y Google__DiasHaciaAdelante
+    // son opcionales. Sin ClientId no se registra el proceso en segundo plano y los endpoints
+    // responden que no está configurada.
+    private static IServiceCollection AddGoogleCalendar(this IServiceCollection services, IConfiguration configuration)
+    {
+        var s = configuration.GetSection("Google");
+        var opciones = new OpcionesGoogle
+        {
+            ClientId = s["ClientId"],
+            ClientSecret = s["ClientSecret"],
+            RedirectUri = s["RedirectUri"],
+            ClaveCifradoBase64 = s["ClaveCifradoBase64"],
+            UrlWebhook = s["UrlWebhook"],
+            RetornoApp = string.IsNullOrWhiteSpace(s["RetornoApp"]) ? "natural://agenda/google" : s["RetornoApp"]!,
+            IntervaloEntranteSegundos = s.GetValue<int?>("IntervaloEntranteSegundos") is > 0 and var i ? i : 300,
+            FrecuenciaSalidaSegundos = s.GetValue<int?>("FrecuenciaSalidaSegundos") is > 0 and var f ? f : 30,
+            DiasHaciaAdelante = s.GetValue<int?>("DiasHaciaAdelante") is > 0 and var d ? d : 90,
+        };
+        services.AddSingleton(opciones);
+
+        services.AddMemoryCache();
+        services.AddScoped<TenantEnEjecucion>();
+        services.AddSingleton<IEjecutorPorTenant, EjecutorPorTenant>();
+        services.AddSingleton<ICifradorSecretos, CifradorAesGcm>();
+        services.AddScoped<ICalendarioRepositorio, CalendarioRepositorio>();
+
+        services.AddHttpClient<GoogleCalendarHttp>(c => c.Timeout = TimeSpan.FromSeconds(20));
+        services.AddScoped<ICalendarioExterno>(sp => sp.GetRequiredService<GoogleCalendarHttp>());
+        services.AddScoped<IGoogleOAuth>(sp => sp.GetRequiredService<GoogleCalendarHttp>());
+
+        if (opciones.Habilitado)
+            services.AddHostedService<GoogleSincronizacionWorker>();
 
         return services;
     }

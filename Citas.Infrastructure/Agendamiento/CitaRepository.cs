@@ -57,6 +57,20 @@ public class CitaRepository : ICitaRepository
         return filas.Select(CitaMapper.ToDomain).ToList();
     }
 
+    public async Task<IReadOnlyList<Cita>> ListarParaCalendarioAsync(
+        int idEmpleado,
+        DateTime desdeUtc,
+        IReadOnlyCollection<int> idsPublicadas,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = idsPublicadas.ToList();
+        var filas = await ConDetalles()
+            .Where(c => (c.IdEmpleado == idEmpleado && c.Fin >= desdeUtc) || ids.Contains(c.IdCita))
+            .OrderBy(c => c.Inicio)
+            .ToListAsync(cancellationToken);
+        return filas.Select(CitaMapper.ToDomain).ToList();
+    }
+
     public async Task<Cita?> ObtenerPorIdAsync(int idCita, CancellationToken cancellationToken = default)
     {
         var fila = await ConDetalles().FirstOrDefaultAsync(c => c.IdCita == idCita, cancellationToken);

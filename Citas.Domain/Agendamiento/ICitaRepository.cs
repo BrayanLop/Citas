@@ -27,6 +27,17 @@ public interface ICitaRepository
         int? excluirIdCita = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Citas (con servicios y nombres) que el sincronizador del calendario debe revisar para un
+    /// empleado: las que terminan desde <paramref name="desdeUtc"/> y las ya publicadas
+    /// (<paramref name="idsPublicadas"/>), aunque hoy sean de otro empleado o ya hayan pasado.
+    /// </summary>
+    Task<IReadOnlyList<Cita>> ListarParaCalendarioAsync(
+        int idEmpleado,
+        DateTime desdeUtc,
+        IReadOnlyCollection<int> idsPublicadas,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Obtiene una cita por su identificador, o null si no existe en el tenant.</summary>
     Task<Cita?> ObtenerPorIdAsync(int idCita, CancellationToken cancellationToken = default);
 

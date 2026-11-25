@@ -1,13 +1,16 @@
 using Citas.Application.Acceso.Abstractions;
 using Citas.Application.Agendamiento;
+using Citas.Application.Calendario;
 using Citas.Application.Common;
 using Citas.Data;
 using Citas.Domain.Acceso;
 using Citas.Domain.Agendamiento;
+using Citas.Domain.Calendario;
 using Citas.Domain.Empresas;
 using Citas.Domain.Servicios;
 using Citas.Infrastructure.Acceso;
 using Citas.Infrastructure.Agendamiento;
+using Citas.Infrastructure.Calendario;
 using Citas.Infrastructure.Common;
 using Citas.Infrastructure.Empresas;
 using Citas.Infrastructure.Servicios;
@@ -16,6 +19,7 @@ using Citas.Multitenancy;
 using Citas.Tests.Soporte;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.PostgreSql;
 
 namespace Citas.Tests.Integracion;
@@ -77,10 +81,15 @@ public sealed class Negocio
     public int ServicioCorte { get; private set; }
     public List<int> Clientes { get; } = [];
 
+    /// <summary>El Google Calendar de mentira que usa el sincronizador de este negocio.</summary>
+    public CalendarioExternoFalso Google { get; } = new();
+    public RelojFalso Tiempo { get; }
+
     public Negocio(PostgresFixture bd, string tenant)
     {
         Tenant = tenant;
         var tiempo = new RelojFalso(new DateTimeOffset(2026, 11, 25, 15, 0, 0, TimeSpan.Zero));
+        Tiempo = tiempo;
         var opciones = new OpcionesAgenda { ZonaHoraria = OpcionesAgenda.ResolverZona("America/Bogota") };
 
         var s = new ServiceCollection();
@@ -98,6 +107,17 @@ public sealed class Negocio
         s.AddScoped<IUsuarioActual>(_ => new UsuarioActualFalso { Tenant = tenant, RolNatural = RolesNatural.Administrador });
         s.AddScoped<ReglasAgenda>();
         s.AddScoped<CitaAppService>();
+        s.AddScoped<DisponibilidadAppService>();
+
+        // Integración con Google Calendar: repositorio real, Google y cifrado de mentira.
+        var opcionesGoogle = new OpcionesGoogle { ClientId = "id", ClaveCifradoBase64 = Convert.ToBase64String(new byte[32]) };
+        s.AddSingleton(opcionesGoogle);
+        s.AddSingleton(new FirmasGoogle(opcionesGoogle));
+        s.AddSingleton<ICalendarioExterno>(Google);
+        s.AddSingleton<ICifradorSecretos>(new CifradorFalso());
+        s.AddLogging();
+        s.AddScoped<ICalendarioRepositorio, CalendarioRepositorio>();
+        s.AddScoped<SincronizadorCalendario>();
         _servicios = s.BuildServiceProvider();
         Reloj = _servicios.GetRequiredService<RelojAgenda>();
     }

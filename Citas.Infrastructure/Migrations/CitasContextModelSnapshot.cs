@@ -147,6 +147,86 @@ namespace Citas.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CuentaGoogleDbModel", b =>
+                {
+                    b.Property<int>("IdCuenta")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdCuenta"));
+
+                    b.Property<string>("CalendarioId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("CambioRemotoPendiente")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("CanalExpiraUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CanalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("ConectadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ProximoIntentoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RefreshTokenCifrado")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SyncToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UltimaSincronizacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UltimoError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("IdCuenta");
+
+                    b.HasIndex("CanalId")
+                        .HasFilter("\"CanalId\" IS NOT NULL");
+
+                    b.HasIndex("IdEmpleado");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "IdEmpleado")
+                        .IsUnique();
+
+                    b.ToTable("CuentasGoogle");
+                });
+
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.DetalleCitaDbModel", b =>
                 {
                     b.Property<int>("IdDetalle")
@@ -201,6 +281,83 @@ namespace Citas.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Empresas");
+                });
+
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.GoogleBloqueoDbModel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("GoogleEventId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("IdBloqueo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdBloqueo");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "IdEmpleado", "GoogleEventId")
+                        .IsUnique();
+
+                    b.ToTable("GoogleBloqueos");
+                });
+
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.GoogleEventoCitaDbModel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("GoogleEventId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Huella")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("IdCita")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdEmpleado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "IdCita")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "IdEmpleado");
+
+                    b.ToTable("GoogleEventosCita");
                 });
 
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.PersonaDbModel", b =>
@@ -452,6 +609,17 @@ namespace Citas.Infrastructure.Migrations
                     b.Navigation("Empleado");
                 });
 
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.CuentaGoogleDbModel", b =>
+                {
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.UsuarioDbModel", "Empleado")
+                        .WithMany()
+                        .HasForeignKey("IdEmpleado")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Empleado");
+                });
+
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.DetalleCitaDbModel", b =>
                 {
                     b.HasOne("Citas.Infrastructure.Persistencia.Modelos.CitaDbModel", "Cita")
@@ -469,6 +637,17 @@ namespace Citas.Infrastructure.Migrations
                     b.Navigation("Cita");
 
                     b.Navigation("Servicio");
+                });
+
+            modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.GoogleBloqueoDbModel", b =>
+                {
+                    b.HasOne("Citas.Infrastructure.Persistencia.Modelos.BloqueoAgendaDbModel", "Bloqueo")
+                        .WithMany()
+                        .HasForeignKey("IdBloqueo")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bloqueo");
                 });
 
             modelBuilder.Entity("Citas.Infrastructure.Persistencia.Modelos.RolUsuarioDbModel", b =>

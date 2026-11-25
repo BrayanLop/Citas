@@ -249,4 +249,4 @@ Queda escuchando en `http://localhost:5202` (`/health`; en Development, `/scalar
 
 ## Despliegue
 
-Hay notas de despliegue en Railway en [`RAILWAY.md`](RAILWAY.md).
+Se despliega con Docker en AWS Lightsail, detrás de nginx, con las variables de entorno de la tabla de configuración (archivo de entorno del contenedor, fuera del repositorio). La guía paso a paso se agrega junto con el despliegue.

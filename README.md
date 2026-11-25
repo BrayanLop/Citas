@@ -249,4 +249,4 @@ Queda escuchando en `http://localhost:5202` (`/health`; en Development, `/scalar
 
 ## Despliegue
 
-Se despliega con Docker en AWS Lightsail, detrás de nginx, con las variables de entorno de la tabla de configuración (archivo de entorno del contenedor, fuera del repositorio). La guía paso a paso se agrega junto con el despliegue.
+Se despliega con Docker en AWS Lightsail, detrás de nginx, con las variables de entorno de la tabla de configuración (archivo de entorno del contenedor, fuera del repositorio). Guía paso a paso, script con rollback y plantilla de nginx en [`deploy/DESPLIEGUE.md`](deploy/DESPLIEGUE.md).

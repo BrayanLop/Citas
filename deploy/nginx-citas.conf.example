@@ -1,0 +1,39 @@
+# Plantilla de nginx para Citas (nginx corre como CONTENEDOR en la red natural-net).
+# Cópiala a /home/ubuntu/nginx/conf.d/citas.conf. Lo más fácil es partir de tu brar.conf
+# (mismo formato de certificados) y cambiar nombres:
+#     sed 's/brar-api/citas-api/g; s/brar\.bia\.solutions/citas.bia.solutions/g' brar.conf > citas.conf
+# Después de editar:   docker exec nginx nginx -t  &&  docker restart nginx
+#
+# IMPORTANTE: el nombre del contenedor va en una VARIABLE y con "resolver". Así, si el
+# contenedor citas-api no está arriba, nginx arranca igual (solo ese subdominio da 502) y
+# no se caen Natural ni Brar. Con un proxy_pass directo, nginx NO arrancaría.
+
+server {
+    listen 80;
+    server_name citas.bia.solutions;
+    # Necesario para que certbot pueda validar el dominio (ajusta a como lo hiciste con Brar).
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    server_name citas.bia.solutions;
+
+    # certbot deja los certificados en la misma ruta que usaste para Brar, con este dominio:
+    ssl_certificate     /etc/letsencrypt/live/citas.bia.solutions/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/citas.bia.solutions/privkey.pem;
+
+    resolver 127.0.0.11 valid=10s;   # DNS interno de Docker
+
+    location / {
+        set $citas_api http://citas-api:8080;
+        proxy_pass         $citas_api;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+    }
+}
